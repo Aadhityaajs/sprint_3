@@ -1,4 +1,4 @@
-// src/notifications/NotificationsDashboard.jsx
+// src/NotificationsPage/NotificationsDashboard.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import HeaderNotifications from './components/HeaderNotifications.jsx';
 import SummaryCards from './components/SummaryCards.jsx';
@@ -7,7 +7,6 @@ import NotificationsTable from './components/NotificationsTable';
 import CreateNotificationModal from './components/CreateNotificationModal';
 import ViewNotificationModal from './components/ViewNotificationModal';
 import { getAllNotifications, createNotification, markAsRead } from '../Apis/notificationsApi.jsx';
-
 import AdminHeader from './components/AdminHeader.jsx';
 
 export default function NotificationsDashboard(props) {
@@ -29,7 +28,7 @@ export default function NotificationsDashboard(props) {
         warning: true,
         alert: true
     });
-    const [userType, setUserType] = useState('ALL'); // admin only
+    const [userType, setUserType] = useState('ALL');
     const [dateRange, setDateRange] = useState({ from: '', to: '' });
 
     // Modal
@@ -69,7 +68,7 @@ export default function NotificationsDashboard(props) {
         }
 
         const userRows = notifications.filter(
-            (c) => Number(c.userId) === Number(loggedUserId)
+            (r) => Number(r.userId) === Number(loggedUserId)
         );
 
         return {
@@ -79,26 +78,23 @@ export default function NotificationsDashboard(props) {
         };
     }, [notifications, isAdmin, loggedUserId]);
 
-    // Toggle statuses
+    // Toggle functions
     const toggleStatus = (key) =>
         setStatusFilters((s) => ({ ...s, [key]: !s[key] }));
 
-    // Toggle types
     const toggleType = (key) =>
-        setTypeFilters((s) => ({ ...s, [key]: !s[key] }));
+        setTypeFilters((t) => ({ ...t, [key]: !t[key] }));
 
     // FILTER rows
     const filteredRows = useMemo(() => {
         let rows = [...notifications];
 
-        // user-specific filtering
         if (!isAdmin) {
             rows = rows.filter(
                 (r) => Number(r.userId) === Number(loggedUserId)
             );
         }
 
-        // search by notification id
         if (searchId.trim()) {
             const num = Number(searchId);
             if (!isNaN(num)) {
@@ -106,6 +102,11 @@ export default function NotificationsDashboard(props) {
             } else {
                 return [];
             }
+        }
+
+        // Admin filters
+        if (isAdmin && userType !== 'ALL') {
+            rows = rows.filter((r) => r.target === userType);
         }
 
         // Date filtering
@@ -116,49 +117,48 @@ export default function NotificationsDashboard(props) {
             rows = rows.filter((r) => {
                 const d = new Date(r.createdon);
                 if (from && d < from) return false;
-
                 if (to) {
                     const end = new Date(dateRange.to);
                     end.setHours(23, 59, 59, 999);
                     if (d > end) return false;
                 }
-
                 return true;
             });
         }
 
         // Status filtering
-        const allowed = Object.entries(statusFilters)
+        const allowedStatuses = Object.entries(statusFilters)
             .filter(([_, v]) => v)
             .map(([k]) => k);
 
-        rows = rows.filter((r) => {
-            if (r.isRead && allowed.includes('Read')) return true;
-            if (!r.isRead && allowed.includes('Unread')) return true;
-            return false;
-        });
+        rows = rows.filter((r) =>
+            allowedStatuses.includes(r.isRead ? 'Read' : 'Unread')
+        );
 
         // Type filtering
         const allowedTypes = Object.entries(typeFilters)
             .filter(([_, v]) => v)
             .map(([k]) => k);
 
-        return rows.filter((r) => allowedTypes.includes(r.notificationType));
+        rows = rows.filter((r) => allowedTypes.includes(r.notificationType));
+
+        return rows;
     }, [notifications, isAdmin, loggedUserId, searchId, userType, dateRange, statusFilters, typeFilters]);
 
-    // VIEW notification
+    // HANDLE VIEW
     const handleView = async (notification) => {
         setViewNotification(notification);
 
-        // Mark as read ONLY if user is NOT admin and notification is unread
-        if (!isAdmin && !notification.isRead) {
+        if (!notification.isRead) {
             try {
                 const res = await markAsRead(role, loggedUserId, notification.notificationId);
-                if (!res.error) {
+                if (res.notification) {
                     setNotifications((prev) =>
-                        prev.map((c) => (c.notificationId === notification.notificationId ? res.notification : c))
+                        prev.map((c) =>
+                            c.notificationId === notification.notificationId
+                                ? res.notification : c
+                        )
                     );
-                    // Update the currently viewed notification to reflect read status
                     setViewNotification(res.notification);
                 }
             } catch (err) {
@@ -198,13 +198,12 @@ export default function NotificationsDashboard(props) {
 
         let targetUsers = null;
 
-        // Expand target to actual user IDs
         if (form.target === 'All Users') {
-            targetUsers = [1, 2, 3]; // All users
+            targetUsers = [1, 2, 3];
         } else if (form.target === 'Clients') {
-            targetUsers = [1]; // Client user IDs
+            targetUsers = [1];
         } else if (form.target === 'Hosts') {
-            targetUsers = [2]; // Host user IDs
+            targetUsers = [2];
         } else if (form.target === 'Specific Users' && form.targetUsersInput) {
             targetUsers = form.targetUsersInput.split(',').map(s => s.trim()).filter(Boolean);
         }
@@ -227,32 +226,16 @@ export default function NotificationsDashboard(props) {
         }
     };
 
-
     return (
-        <div className="p-5 max-w-full mx-auto">
-            <HeaderNotifications />
+        <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <HeaderNotifications />
 
-            <main className="bg-transparent">
-                <div className="flex gap-4 mb-4 items-start">
-                    {isAdmin ? (
-                        <AdminHeader
-                            summary={summary}
-                            searchId={searchId}
-                            setSearchId={setSearchId}
-                            statusFilters={statusFilters}
-                            toggleStatus={toggleStatus}
-                            typeFilters={typeFilters}
-                            toggleType={toggleType}
-                            userType={userType}
-                            setUserType={setUserType}
-                            dateRange={dateRange}
-                            setDateRange={setDateRange}
-                            onOpenModal={openModal}
-                        />
-                    ) : (
-                        <>
-                            <SummaryCards summary={summary} />
-                            <SearchFilters
+                <main className="mt-6">
+                    <div className="flex gap-5 mb-6 items-start flex-wrap">
+                        {isAdmin ? (
+                            <AdminHeader
+                                summary={summary}
                                 searchId={searchId}
                                 setSearchId={setSearchId}
                                 statusFilters={statusFilters}
@@ -263,40 +246,59 @@ export default function NotificationsDashboard(props) {
                                 setUserType={setUserType}
                                 dateRange={dateRange}
                                 setDateRange={setDateRange}
-                                isAdmin={false}
                                 onOpenModal={openModal}
                             />
-                        </>
-                    )}
-                </div>
+                        ) : (
+                            <>
+                                <SummaryCards summary={summary} />
+                                <SearchFilters
+                                    searchId={searchId}
+                                    setSearchId={setSearchId}
+                                    statusFilters={statusFilters}
+                                    toggleStatus={toggleStatus}
+                                    typeFilters={typeFilters}
+                                    toggleType={toggleType}
+                                    userType={userType}
+                                    setUserType={setUserType}
+                                    dateRange={dateRange}
+                                    setDateRange={setDateRange}
+                                    isAdmin={false}
+                                    onOpenModal={openModal}
+                                />
+                            </>
+                        )}
+                    </div>
 
-                {loading ? (
-                    <div className="p-6">Loading notifications…</div>
-                ) : (
-                    <NotificationsTable
-                        rows={filteredRows}
-                        onView={handleView}
-                        isAdmin={isAdmin}
+                    {loading ? (
+                        <div className="text-center py-12 text-gray-600 text-lg">
+                            Loading notifications…
+                        </div>
+                    ) : (
+                        <NotificationsTable
+                            rows={filteredRows}
+                            onView={handleView}
+                            isAdmin={isAdmin}
+                        />
+                    )}
+                </main>
+
+                {isModalOpen && (
+                    <CreateNotificationModal
+                        form={form}
+                        setForm={setForm}
+                        errors={errors}
+                        onSubmit={handleSubmit}
+                        onClose={closeModal}
                     />
                 )}
-            </main>
 
-            {isModalOpen && (
-                <CreateNotificationModal
-                    form={form}
-                    setForm={setForm}
-                    errors={errors}
-                    onSubmit={handleSubmit}
-                    onClose={closeModal}
-                />
-            )}
-
-            {viewNotification && (
-                <ViewNotificationModal
-                    notification={viewNotification}
-                    onClose={() => setViewNotification(null)}
-                />
-            )}
+                {viewNotification && (
+                    <ViewNotificationModal
+                        notification={viewNotification}
+                        onClose={() => setViewNotification(null)}
+                    />
+                )}
+            </div>
         </div>
     );
 }

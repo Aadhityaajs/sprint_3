@@ -1,6 +1,8 @@
+// src/ClientPages/ClientDashboard.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { Search, Calendar, MapPin, TrendingUp } from "lucide-react";
 
 const BASE_URL = "http://localhost:8081/api/client/";
 
@@ -42,7 +44,7 @@ export default function ClientDashboard() {
       try {
         const json = JSON.parse(u);
         if (json.role === 'client') {
-          setUser(json); // Set the user state here!
+          setUser(json);
         } else {
           sessionStorage.removeItem("currentUser");
           navigate("/login");
@@ -120,11 +122,6 @@ export default function ClientDashboard() {
         setUpcomingList(upcoming);
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
-        if (err.response) {
-          console.error("Response error:", err.response.data);
-        } else if (err.request) {
-          console.error("Request error:", err.request);
-        }
       } finally {
         setLoading(false);
       }
@@ -140,7 +137,7 @@ export default function ClientDashboard() {
 
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
         <div className="text-xl font-semibold text-gray-700">Checking authentication...</div>
       </div>
     );
@@ -148,181 +145,235 @@ export default function ClientDashboard() {
 
   if (loading && user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
         <div className="text-xl font-semibold text-gray-700">Loading dashboard...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 py-7">
-      <div className="max-w-7xl mx-auto px-5 pb-10">
-        {/* HEADER */}
-        <header className="flex justify-between items-center mb-5">
-          <div>
-            <h1 className="text-2xl font-semibold mb-1">
-              Welcome back, <span className="text-blue-600">{user?.username || "Guest"}</span>
-            </h1>
-            <p className="text-gray-500 text-sm">Here's what's happening with your bookings</p>
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      {/* Header Navigation */}
+      <nav className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-900">SpaceFinders</h1>
+              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                Client
+              </span>
+            </div>
+            
+            <div className="flex gap-3">
+              <button 
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium"
+                onClick={() => navigate("/complaints")}
+              >
+                Support
+              </button>
+              <button 
+                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors font-medium"
+                onClick={() => navigate("/profile")}
+              >
+                My Profile
+              </button>
+              <button 
+                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors font-medium"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
           </div>
+        </div>
+      </nav>
 
-          <div className="flex gap-2.5 items-center">
-            <button className="px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded hover:bg-green-600 transition">
-              Notification
-            </button>
-            <button 
-              className="px-4 py-2 bg-purple-600 text-white text-sm font-semibold rounded hover:bg-purple-700 transition"
-              onClick={() => navigate("/profile")}
-            >
-              My Profile
-            </button>
-            <button 
-              className="px-4 py-2 bg-red-500 text-white text-sm font-semibold rounded hover:bg-red-600 transition"
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
-          </div>
-        </header>
-
-        {/* STATS ROW */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-4">
-          <StatCard title="Total Bookings" value={totalBookings} />
-          <StatCard title="Upcoming Bookings" value={upcomingCount} />
-          <StatCard title="Current Bookings" value={currentCount} />
-          <StatCard title="Completed Bookings" value={completedCount} />
-        </section>
-
-        {/* MAIN GRID */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
-          {/* LEFT — UPCOMING BOOKINGS */}
-          <main className="flex flex-col gap-4">
-            <Panel
-              title="Upcoming Bookings"
-              actionText="View All →"
-              onAction={() => navigate("/bookings")}
-            >
-              {upcomingList.length === 0 ? (
-                <div className="text-center py-7 px-4 pb-9 text-gray-600">
-                  <div className="text-gray-400 text-xs mb-2">NO BOOKINGS</div>
-                  <h3 className="text-lg font-semibold mb-2">No Upcoming Bookings</h3>
-                  <p className="text-gray-500 text-sm mb-3">
-                    You don't have any upcoming bookings yet.
-                  </p>
-                  <button
-                    className="mt-3 bg-blue-600 text-white px-3.5 py-2 rounded text-sm font-medium hover:bg-blue-700 transition"
-                    onClick={() => navigate("/search")}
-                  >
-                    Search Properties
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {upcomingList.slice(0, 3).map((b) => (
-                    <div 
-                      key={b.id} 
-                      className="flex gap-3 p-2.5 rounded-md border border-gray-200 bg-blue-50/30"
-                    >
-                      <img
-                        src={b.image}
-                        alt={b.name}
-                        className="w-24 h-20 rounded object-cover"
-                      />
-                      <div className="text-sm">
-                        <div className="font-semibold">{b.name}</div>
-                        <div className="text-gray-600">{b.location}</div>
-                        <div className="text-xs mt-1">
-                          Stay: {b.checkIn} — {b.checkOut}
-                        </div>
-                        <div className="text-xs">
-                          Total Paid: ₹{b.totalPrice}
-                        </div>
-                        <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 text-xs">
-                          UPCOMING
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Panel>
-          </main>
-
-          {/* RIGHT — QUICK ACTIONS */}
-          <aside className="flex flex-col gap-4">
-            <Panel title="Quick Actions">
-              <ul className="list-none p-0 m-0 flex flex-col gap-2">
-                <ActionItem
-                  label="Search Properties"
-                  tag="SEARCH"
-                  onClick={() => navigate("/search")}
-                />
-                <ActionItem
-                  label="My Bookings"
-                  tag="BOOKINGS"
-                  onClick={() => navigate("/bookings")}
-                />
-                <ActionItem
-                  label="My Complaints"
-                  tag="COMPLAINTS"
-                  onClick={() => navigate("/complaints")}
-                />
-              </ul>
-            </Panel>
-          </aside>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+            Welcome back, <span className="text-blue-600">{user?.username || "Guest"}</span>!
+          </h2>
+          <p className="text-lg text-gray-600">
+            Manage your bookings and discover new places to stay
+          </p>
         </div>
 
-        <footer className="mt-4 text-xs text-gray-400 text-right">
-          Dashboard Page
-        </footer>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard 
+            title="Total Bookings" 
+            value={totalBookings} 
+            icon={<TrendingUp className="w-6 h-6" />}
+            color="blue"
+          />
+          <StatCard 
+            title="Upcoming" 
+            value={upcomingCount} 
+            icon={<Calendar className="w-6 h-6" />}
+            color="purple"
+          />
+          <StatCard 
+            title="Current Stays" 
+            value={currentCount} 
+            icon={<MapPin className="w-6 h-6" />}
+            color="green"
+          />
+          <StatCard 
+            title="Completed" 
+            value={completedCount} 
+            icon={<TrendingUp className="w-6 h-6" />}
+            color="gray"
+          />
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <ActionCard
+            title="Search Properties"
+            description="Find your perfect space from thousands of listings"
+            icon={<Search className="w-8 h-8" />}
+            onClick={() => navigate("/search")}
+            gradient="from-blue-500 to-blue-600"
+          />
+          <ActionCard
+            title="My Bookings"
+            description="View and manage all your reservations"
+            icon={<Calendar className="w-8 h-8" />}
+            onClick={() => navigate("/bookings")}
+            gradient="from-purple-500 to-purple-600"
+          />
+          <ActionCard
+            title="Support"
+            description="Get help with your bookings and properties"
+            icon={<MapPin className="w-8 h-8" />}
+            onClick={() => navigate("/complaints")}
+            gradient="from-green-500 to-green-600"
+          />
+        </div>
+
+        {/* Upcoming Bookings Section */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-2xl font-bold text-gray-900">Upcoming Bookings</h3>
+            {upcomingList.length > 0 && (
+              <button
+                onClick={() => navigate("/bookings")}
+                className="text-blue-600 hover:text-blue-700 font-medium text-sm hover:underline"
+              >
+                View All →
+              </button>
+            )}
+          </div>
+
+          {upcomingList.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-gray-400" />
+              </div>
+              <h4 className="text-lg font-semibold text-gray-900 mb-2">No Upcoming Bookings</h4>
+              <p className="text-gray-600 mb-4">Start planning your next adventure!</p>
+              <button
+                onClick={() => navigate("/search")}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Search Properties
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {upcomingList.slice(0, 4).map((booking) => (
+                <BookingCard key={booking.id} booking={booking} navigate={navigate} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function StatCard({ title, value }) {
+// Stat Card Component
+function StatCard({ title, value, icon, color }) {
+  const colorClasses = {
+    blue: "bg-blue-100 text-blue-600",
+    purple: "bg-purple-100 text-purple-600",
+    green: "bg-green-100 text-green-600",
+    gray: "bg-gray-100 text-gray-600"
+  };
+
   return (
-    <div className="bg-white rounded-md p-3 border border-gray-200 shadow-sm">
-      <div className="text-gray-500 text-xs uppercase tracking-wider">
-        {title}
+    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-3">
+        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
+          {icon}
+        </div>
       </div>
-      <div className="text-xl mt-2 font-bold">{value}</div>
+      <h3 className="text-gray-600 text-sm font-medium mb-1">{title}</h3>
+      <p className="text-3xl font-bold text-gray-900">{value}</p>
     </div>
   );
 }
 
-function Panel({ title, children, actionText, onAction }) {
+// Action Card Component
+function ActionCard({ title, description, icon, onClick, gradient }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
-      <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-        <div className="font-semibold">{title}</div>
-        {actionText && (
-          <button 
-            className="text-xs text-blue-600 cursor-pointer hover:underline"
-            onClick={onAction}
-          >
-            {actionText}
-          </button>
-        )}
+    <div
+      onClick={onClick}
+      className="group cursor-pointer bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all p-6"
+    >
+      <div className={`inline-flex p-4 rounded-lg bg-gradient-to-br ${gradient} text-white mb-4 group-hover:scale-110 transition-transform`}>
+        {icon}
       </div>
-      <div className="p-4">{children}</div>
+      <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
+      <p className="text-gray-600 text-sm">{description}</p>
     </div>
   );
 }
 
-function ActionItem({ label, tag, onClick }) {
+// Booking Card Component
+function BookingCard({ booking, navigate }) {
   return (
-    <li className="flex justify-between items-center bg-gray-50 p-2.5 px-3 rounded border border-gray-100">
-      <div>
-        <div className="text-xs uppercase text-gray-600 mb-0.5">{tag}</div>
-        <span className="text-sm">{label}</span>
+    <div className="group bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all overflow-hidden">
+      <div className="flex gap-4 p-4">
+        <img
+          src={booking.image}
+          alt={booking.name}
+          className="w-24 h-24 rounded-lg object-cover"
+        />
+        <div className="flex-1">
+          <h4 className="font-bold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
+            {booking.name}
+          </h4>
+          <p className="text-sm text-gray-600 mb-2 flex items-center gap-1">
+            <MapPin className="w-4 h-4" />
+            {booking.location}
+          </p>
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {booking.checkIn}
+            </span>
+            <span>→</span>
+            <span>{booking.checkOut}</span>
+          </div>
+          <div className="mt-2">
+            <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+              {booking.nights} nights • {booking.guests} guests
+            </span>
+          </div>
+        </div>
       </div>
-      <button 
-        className="text-xs text-blue-600 cursor-pointer hover:underline"
-        onClick={onClick}
-      >
-        Go
-      </button>
-    </li>
+      <div className="px-4 py-3 bg-white border-t border-gray-200 flex justify-between items-center">
+        <span className="font-bold text-gray-900">₹{booking.totalPrice}</span>
+        <button
+          onClick={() => navigate("/booking-details", { state: { booking } })}
+          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+        >
+          View Details →
+        </button>
+      </div>
+    </div>
   );
 }

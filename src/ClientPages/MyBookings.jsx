@@ -1,7 +1,6 @@
-// src/Component/MyBookings.jsx
+// src/ClientPages/MyBookings.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-// import "./MyBookings.css";
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -19,6 +18,64 @@ function daysBetween(d1, d2) {
   const one = new Date(d1);
   const two = new Date(d2);
   return Math.round((two - one) / (1000 * 60 * 60 * 24));
+}
+
+function Section({ title, list, emptyText, onView }) {
+  return (
+    <div className="mb-10">
+      <h2 className="text-2xl mb-4 font-semibold text-gray-900">{title}</h2>
+      {list.length === 0 ? (
+        <p className="text-gray-500 text-sm">{emptyText}</p>
+      ) : (
+        <div className="flex flex-col gap-5">
+          {list.map((b) => (
+            <div
+              key={b.id}
+              className="flex bg-white p-4 rounded-xl shadow-md gap-4 items-center hover:shadow-lg transition-shadow"
+            >
+              <img
+                src={b.image}
+                alt={b.name}
+                className="w-36 h-28 rounded-lg object-cover bg-gray-100"
+              />
+              <div className="flex flex-col gap-1 flex-1">
+                <h3 className="text-xl font-bold text-gray-900 m-0">{b.name}</h3>
+                <p className="text-gray-600 m-0 text-sm">{b.location}</p>
+                <p className="m-0 text-sm text-gray-700">
+                  <span className="font-semibold">Check-in:</span> {b.checkIn} • 
+                  <span className="font-semibold ml-2">Check-out:</span> {b.checkOut}
+                </p>
+                <p className="m-0 text-sm text-gray-700">
+                  <span className="font-semibold">Guests:</span> {b.guests} • 
+                  <span className="font-semibold ml-2">Nights:</span> {b.nights}
+                </p>
+                <p className="m-0 text-sm font-semibold text-gray-900">
+                  Total Paid: ₹{b.totalPrice}
+                </p>
+                <p
+                  className={`font-bold mt-1 m-0 text-sm ${
+                    b.status === "CURRENT"
+                      ? "text-green-600"
+                      : b.status === "UPCOMING"
+                      ? "text-blue-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  Status: {b.status}
+                </p>
+              </div>
+              <button
+                onClick={() => onView(b)}
+                className="bg-blue-600 text-white border-none px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors font-medium text-sm"
+              >
+                View Details
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function MyBookings() {
@@ -53,17 +110,11 @@ export default function MyBookings() {
             propertyId: b.propertyId,
             userId: b.userId,
             hostId: b.hostId,
-
-            // dates
             checkIn: ci,
             checkOut: co,
             nights,
             guests: b.numberOfGuest,
-
-            // status
             status: computeStatus(ci, co),
-
-            // property data
             name: property ? property.name : "Unknown Property",
             image: property ? property.image : "/no-image.jpg",
             location: property ? property.location : "",
@@ -74,12 +125,8 @@ export default function MyBookings() {
             propertyStatus: property ? property.propertyStatus : "",
             propertyRating: property ? property.propertyRating : "",
             propertyRatingCount: property ? property.propertyRatingCount : "",
-
-            // price
             pricePerDay,
             totalPrice,
-
-            // extras
             hasExtraCot: b.hasExtraCot,
             hasDeepClean: b.hasDeepClean,
             bookingStatus: b.bookingStatus,
@@ -104,81 +151,47 @@ export default function MyBookings() {
   const past = bookings.filter((b) => b.status === "PAST");
 
   return (
-    <div className="p-8 max-w-4xl mx-auto font-sans">
-      <button className="bg-gray-900 text-white border-none px-3.5 py-2 rounded-md cursor-pointer mb-5 hover:bg-gray-800" onClick={() => navigate("/clientDashboard")}>
-        ← Back
-      </button>
-
-      <h1 className="text-3xl mb-2.5 font-bold">My Bookings</h1>
-
-      <div className="flex gap-5 text-base mb-6">
-        <span className="font-bold">Upcoming ({upcoming.length})</span>
-        <span className="font-bold">Current ({current.length})</span>
-        <span className="font-bold">Past ({past.length})</span>
-      </div>
-
-      <Section
-        title="Upcoming"
-        list={upcoming}
-        emptyText="No upcoming bookings."
-        onView={onView}
-      />
-      <Section
-        title="Current"
-        list={current}
-        emptyText="No current bookings."
-        onView={onView}
-      />
-      <Section
-        title="Past"
-        list={past}
-        emptyText="No past bookings."
-        onView={onView}
-      />
-    </div>
-  );
-}
-
-function Section({ title, list, emptyText, onView }) {
-  return (
-    <div className="mb-10">
-      <h2 className="text-2xl mb-4 font-semibold">{title}</h2>
-
-      <div className="flex flex-col gap-5">
-        {list.map((b) => (
-          <BookingCard key={b.id} booking={b} onView={onView} />
-        ))}
-
-        {list.length === 0 && <p className="text-gray-500 text-sm">{emptyText}</p>}
-      </div>
-    </div>
-  );
-}
-
-function BookingCard({ booking, onView }) {
-  return (
-    <div className="flex bg-white p-4 rounded-xl shadow-md gap-4 items-center">
-      <img src={booking.image} alt="" className="w-[140px] h-[110px] rounded-lg object-cover bg-gray-100" />
-
-      <div className="flex flex-col gap-1">
-        <h3 className="text-xl m-0 font-semibold">{booking.name}</h3>
-        <p className="text-gray-600 m-0">{booking.location}</p>
-
-        <p className="m-0">
-          <strong>Stay:</strong> {booking.checkIn} → {booking.checkOut}
-        </p>
-
-        <p className="m-0">
-          <strong>Total Paid:</strong> ₹{booking.totalPrice}
-        </p>
-
-        <p className={`font-bold mt-1 ${booking.status === 'CURRENT' ? 'text-green-600' : booking.status === 'UPCOMING' ? 'text-blue-600' : 'text-red-600'}`}>
-          {booking.status}
-        </p>
-
-        <button className="mt-2 text-blue-600 hover:underline bg-transparent border-none cursor-pointer" onClick={() => onView(booking)}>
-          View Details →
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <button
+          className="bg-gray-900 text-white border-none px-4 py-2 rounded-lg cursor-pointer mb-6 hover:bg-gray-800 transition-colors font-medium"
+          onClick={() => navigate("/clientDashboard")}
+        >
+          ← Back to Dashboard
         </button>
+
+        <h1 className="text-4xl mb-3 font-bold text-gray-900">My Bookings</h1>
+
+        <div className="flex gap-6 text-base mb-8 text-gray-700">
+          <span className="font-bold">
+            Upcoming <span className="text-blue-600">({upcoming.length})</span>
+          </span>
+          <span className="font-bold">
+            Current <span className="text-green-600">({current.length})</span>
+          </span>
+          <span className="font-bold">
+            Past <span className="text-red-600">({past.length})</span>
+          </span>
+        </div>
+
+        <Section
+          title="Upcoming Bookings"
+          list={upcoming}
+          emptyText="No upcoming bookings."
+          onView={onView}
+        />
+        <Section
+          title="Current Bookings"
+          list={current}
+          emptyText="No current bookings."
+          onView={onView}
+        />
+        <Section
+          title="Past Bookings"
+          list={past}
+          emptyText="No past bookings."
+          onView={onView}
+        />
       </div>
     </div>
   );

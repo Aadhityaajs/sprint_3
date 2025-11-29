@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 
 import PaymentPage from "./Payments/Payments"
 import LandingPage from "./LandingPage/LandingPage"
-import MapComponent from "../Map/LeafletMaps"
+// import MapComponent from "../Map/LeafletMaps"
 import LoginPage from "./LoginPage/login"
 import SignUpPage from "./SignupPage/signup"
 import HostDashboard from "./HostPages/HostDashboard"

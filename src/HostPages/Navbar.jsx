@@ -1,33 +1,39 @@
+// src/HostPages/Navbar.jsx
 import React from "react";
 
 export default function Navbar() {
   const handleLogout = () => {
-    // clear session and go to login page (will be implemented by your friend)
     sessionStorage.clear();
-    // redirect to login (assume /login)
     window.location.href = "/login";
   };
 
-  // const triggerAddProperty = () => {
-  //   window.dispatchEvent(new CustomEvent("openAddProperty"));
-  // };
-
   const openComplaint = () => {
-    // your friend will implement complaint page - just open placeholder
     window.location.href = "/complaint";
   };
 
   return (
-    <nav className="host-dashboard-navbar" style={{background:"#fff", borderBottom:"1px solid #E0E0E0", padding:"12px 24px", display:"flex", justifyContent:"space-between", alignItems:"center"}}>
-      <div style={{display:"flex", alignItems:"center", gap:12}}>
-        <h2 style={{margin:0}}>SpaceFinders</h2>
-        <div style={{color:"#757575"}}>Host Dashboard</div>
+    <nav className="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center shadow-sm">
+      <div className="flex items-center gap-3">
+        <h2 className="m-0 text-xl font-bold text-gray-900">SpaceFinders</h2>
+        <div className="text-gray-500 text-sm font-medium">Host Dashboard</div>
       </div>
 
-      <div style={{display:"flex", gap:12}}>
-        <button className="btn btn-secondary">🔔 Notification</button>
-        <button className="btn btn-secondary" onClick={openComplaint}>📝 Complaint</button>
-        <button className="btn btn-danger" onClick={handleLogout}>🚪 Logout</button>
+      <div className="flex gap-3">
+        <button className="bg-gray-100 text-gray-700 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm">
+          🔔 Notification
+        </button>
+        <button 
+          className="bg-gray-100 text-gray-700 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+          onClick={openComplaint}
+        >
+          📝 Complaint
+        </button>
+        <button 
+          className="bg-red-600 text-white border-none px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium text-sm"
+          onClick={handleLogout}
+        >
+          🚪 Logout
+        </button>
       </div>
     </nav>
   );
