@@ -1,29 +1,11 @@
-// src/ClientPages/ClientDashboard.jsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Search, Calendar, MapPin, TrendingUp } from "lucide-react";
+import { today, daysBetween, computeStatus } from "../utils/dateHelpers";
+import { CONSTANTS } from "../constants";
 
-const BASE_URL = "http://localhost:8081/api/client/";
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function daysBetween(d1, d2) {
-  const one = new Date(d1);
-  const two = new Date(d2);
-  const diffMs = two - one;
-  return Math.round(diffMs / (1000 * 60 * 60 * 24));
-}
-
-function computeStatus(ci, co) {
-  const t = today();
-  if (!ci || !co) return "UNKNOWN";
-  if (t < ci) return "UPCOMING";
-  if (t > co) return "PAST";
-  return "CURRENT";
-}
+const BASE_URL = `${CONSTANTS.API_BASE_URL}/api/client/`;
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -35,63 +17,78 @@ export default function ClientDashboard() {
   const [upcomingList, setUpcomingList] = useState([]);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Check authentication and set user
   useEffect(() => {
-    const u = sessionStorage.getItem("currentUser");
-    if (u) {
-      try {
-        const json = JSON.parse(u);
-        if (json.role === 'client') {
-          setUser(json);
-        } else {
-          sessionStorage.removeItem("currentUser");
-          navigate("/login");
-        }
-      } catch (err) {
-        console.error("Error parsing user data:", err);
+    const userSession = sessionStorage.getItem("currentUser");
+    
+    if (!userSession) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const userData = JSON.parse(userSession);
+      
+      if (userData.role !== "client") {
         sessionStorage.removeItem("currentUser");
         navigate("/login");
+        return;
       }
-    } else {
+
+      setUser(userData);
+      loadDashboardData(userData);
+    } catch (err) {
+      console.error("Error parsing user data:", err);
+      sessionStorage.removeItem("currentUser");
       navigate("/login");
     }
-    setIsCheckingAuth(false);
   }, [navigate]);
 
-  // Load dashboard data
-  useEffect(() => {
-    if (!user) return;
-    
-    async function loadData() {
-      try {
-        setLoading(true);
-        
-        const [propertiesRes, bookingsRes, usersRes] = await Promise.all([
-          axios.get(`${BASE_URL}properties`),
-          axios.get(`${BASE_URL}bookings`),
-          axios.get(`${BASE_URL}users`)
-        ]);
+  const loadDashboardData = async (userData) => {
+    try {
+      setLoading(true);
 
-        const properties = propertiesRes.data;
-        const bookings = bookingsRes.data;
-        const users = usersRes.data;
-        
-        const currentBookings = bookings.filter(b => b.userId == user.userId);
+      const [propertiesRes, bookingsRes, usersRes] = await Promise.all([
+        axios.get(`${BASE_URL}properties`),
+        axios.get(`${BASE_URL}bookings`),
+        axios.get(`${BASE_URL}users`),
+      ]);
 
-        const enriched = currentBookings.map((b) => {
-          const property = properties.find(p => p.propertyId === b.propertyId);
-          const host = users.find(u => u.userId === b.hostId);
+      const properties = propertiesRes.data;
+      const bookings = bookingsRes.data;
+      const users = usersRes.data;
+
+      const currentBookings = bookings.filter(
+        (b) => b.userId === userData.userId
+      );
+
+      const enriched = currentBookings
+        .map((b) => {
+          const property = properties.find(
+            (p) => p.propertyId === b.propertyId
+          );
+          const host = users.find((u) => u.userId === b.hostId);
 
           const ci = b.checkInDate;
           const co = b.checkOutDate;
-          const nights = ci && co ? Math.max(1, daysBetween(ci, co)) : b.nights || 0;
-          const pricePerDay = b.pricePerDay || (property ? property.pricePerDay : 0);
-          const totalPrice = b.totalPrice || nights * pricePerDay + (b.hasDeepClean ? 2000 : 0);
 
-          const addr = b.propertyAddress || (property ? property.address : { city: "", state: "", country: "" });
-          const location = `${addr.city || (property && property.address.city) || ""}, ${addr.state || (property && property.address.state) || ""}, ${addr.country || (property && property.address.country) || ""}`.replace(/^,\s*|,\s*$/g, "");
+          if (!ci || !co) {
+            console.warn(`Booking ${b.bookingId} missing dates`);
+            return null;
+          }
+
+          const nights = Math.max(1, daysBetween(ci, co));
+          const pricePerDay = b.pricePerDay || property?.pricePerDay || 0;
+          const totalPrice =
+            b.totalPrice ||
+            nights * pricePerDay + (b.hasDeepClean ? CONSTANTS.CLEANING_FEE : 0);
+
+          const addr =
+            b.propertyAddress ||
+            property?.address || { city: "", state: "", country: "" };
+          const location = `${addr.city || ""}, ${addr.state || ""}, ${
+            addr.country || ""
+          }`.replace(/^,\s*|,\s*$/g, "");
 
           return {
             ...b,
@@ -99,54 +96,46 @@ export default function ClientDashboard() {
             checkIn: ci,
             checkOut: co,
             guests: b.numberOfGuest,
-            name: b.propertyName || (property && property.propertyName),
-            image: b.imageUrl || (property && property.imageUrl) || "/no-image.jpg",
+            name: b.propertyName || property?.propertyName || "Unknown Property",
+            image: b.imageUrl || property?.imageUrl || "/no-image.jpg",
             location,
             pricePerDay,
             nights,
             totalPrice,
             status: computeStatus(ci, co),
-            hostName: host ? host.username : "Host",
-            hostMobile: host ? host.phone : "",
+            hostName: host?.username || "Host",
+            hostMobile: host?.phone || "",
           };
-        });
+        })
+        .filter(Boolean);
 
-        const upcoming = enriched.filter(b => b.status === "UPCOMING");
-        const current = enriched.filter(b => b.status === "CURRENT");
-        const completed = enriched.filter(b => b.status === "PAST");
+      const upcoming = enriched.filter((b) => b.status === "UPCOMING");
+      const current = enriched.filter((b) => b.status === "CURRENT");
+      const completed = enriched.filter((b) => b.status === "PAST");
 
-        setTotalBookings(enriched.length);
-        setUpcomingCount(upcoming.length);
-        setCurrentCount(current.length);
-        setCompletedCount(completed.length);
-        setUpcomingList(upcoming);
-      } catch (err) {
-        console.error("Error fetching dashboard data:", err);
-      } finally {
-        setLoading(false);
-      }
+      setTotalBookings(enriched.length);
+      setUpcomingCount(upcoming.length);
+      setCurrentCount(current.length);
+      setCompletedCount(completed.length);
+      setUpcomingList(upcoming);
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+    } finally {
+      setLoading(false);
     }
-
-    loadData();
-  }, [user]);
+  };
 
   const handleLogout = () => {
     sessionStorage.removeItem("currentUser");
     navigate("/login");
   };
 
-  if (isCheckingAuth) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
-        <div className="text-xl font-semibold text-gray-700">Checking authentication...</div>
-      </div>
-    );
-  }
-
-  if (loading && user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
-        <div className="text-xl font-semibold text-gray-700">Loading dashboard...</div>
+        <div className="text-xl font-semibold text-gray-700">
+          Loading dashboard...
+        </div>
       </div>
     );
   }
@@ -163,21 +152,21 @@ export default function ClientDashboard() {
                 Client
               </span>
             </div>
-            
+
             <div className="flex gap-3">
-              <button 
+              <button
                 className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium"
                 onClick={() => navigate("/complaints")}
               >
                 Support
               </button>
-              <button 
+              <button
                 className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors font-medium"
                 onClick={() => navigate("/profile")}
               >
                 My Profile
               </button>
-              <button 
+              <button
                 className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors font-medium"
                 onClick={handleLogout}
               >
@@ -193,7 +182,8 @@ export default function ClientDashboard() {
         {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-            Welcome back, <span className="text-blue-600">{user?.username || "Guest"}</span>!
+            Welcome back,{" "}
+            <span className="text-blue-600">{user?.username || "Guest"}</span>!
           </h2>
           <p className="text-lg text-gray-600">
             Manage your bookings and discover new places to stay
@@ -202,27 +192,27 @@ export default function ClientDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard 
-            title="Total Bookings" 
-            value={totalBookings} 
+          <StatCard
+            title="Total Bookings"
+            value={totalBookings}
             icon={<TrendingUp className="w-6 h-6" />}
             color="blue"
           />
-          <StatCard 
-            title="Upcoming" 
-            value={upcomingCount} 
+          <StatCard
+            title="Upcoming"
+            value={upcomingCount}
             icon={<Calendar className="w-6 h-6" />}
             color="purple"
           />
-          <StatCard 
-            title="Current Stays" 
-            value={currentCount} 
+          <StatCard
+            title="Current Stays"
+            value={currentCount}
             icon={<MapPin className="w-6 h-6" />}
             color="green"
           />
-          <StatCard 
-            title="Completed" 
-            value={completedCount} 
+          <StatCard
+            title="Completed"
+            value={completedCount}
             icon={<TrendingUp className="w-6 h-6" />}
             color="gray"
           />
@@ -256,7 +246,9 @@ export default function ClientDashboard() {
         {/* Upcoming Bookings Section */}
         <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-2xl font-bold text-gray-900">Upcoming Bookings</h3>
+            <h3 className="text-2xl font-bold text-gray-900">
+              Upcoming Bookings
+            </h3>
             {upcomingList.length > 0 && (
               <button
                 onClick={() => navigate("/bookings")}
@@ -272,8 +264,12 @@ export default function ClientDashboard() {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Calendar className="w-8 h-8 text-gray-400" />
               </div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-2">No Upcoming Bookings</h4>
-              <p className="text-gray-600 mb-4">Start planning your next adventure!</p>
+              <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                No Upcoming Bookings
+              </h4>
+              <p className="text-gray-600 mb-4">
+                Start planning your next adventure!
+              </p>
               <button
                 onClick={() => navigate("/search")}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -284,7 +280,11 @@ export default function ClientDashboard() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {upcomingList.slice(0, 4).map((booking) => (
-                <BookingCard key={booking.id} booking={booking} navigate={navigate} />
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  navigate={navigate}
+                />
               ))}
             </div>
           )}
@@ -300,15 +300,13 @@ function StatCard({ title, value, icon, color }) {
     blue: "bg-blue-100 text-blue-600",
     purple: "bg-purple-100 text-purple-600",
     green: "bg-green-100 text-green-600",
-    gray: "bg-gray-100 text-gray-600"
+    gray: "bg-gray-100 text-gray-600",
   };
 
   return (
     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-3">
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-          {icon}
-        </div>
+        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>{icon}</div>
       </div>
       <h3 className="text-gray-600 text-sm font-medium mb-1">{title}</h3>
       <p className="text-3xl font-bold text-gray-900">{value}</p>
@@ -323,7 +321,9 @@ function ActionCard({ title, description, icon, onClick, gradient }) {
       onClick={onClick}
       className="group cursor-pointer bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all p-6"
     >
-      <div className={`inline-flex p-4 rounded-lg bg-gradient-to-br ${gradient} text-white mb-4 group-hover:scale-110 transition-transform`}>
+      <div
+        className={`inline-flex p-4 rounded-lg bg-gradient-to-br ${gradient} text-white mb-4 group-hover:scale-110 transition-transform`}
+      >
         {icon}
       </div>
       <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>

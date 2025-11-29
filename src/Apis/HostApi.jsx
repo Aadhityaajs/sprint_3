@@ -19,8 +19,8 @@ async function request(path, opts = {}) {
   try {
     // Axios response structure is different: data is in the 'data' property
     const res = await axios(config);
-    console.log("data: ", res.data.data);
-    return res.data.data;
+    console.log("res data wdwldwl data: ", res.data);
+    return res.data;
   } catch (error) {
     // Axios automatically throws an error for non-2xx responses (like 404, 500)
     // The error object has a 'response' property if one was received from the server

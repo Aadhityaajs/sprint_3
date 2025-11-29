@@ -114,6 +114,8 @@ export default function HostDashboard() {
         ? await updateProperty(payload)
         : await addProperty(payload);
 
+      console.log("Response from submitProperty:", resp);
+
       if (resp?.success) {
         setMessages({ success: isEditMode ? "Property updated" : "Property added", error: "" });
         setShowPropertyForm(false);

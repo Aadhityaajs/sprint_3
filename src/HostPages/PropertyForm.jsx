@@ -89,9 +89,9 @@ export default function PropertyForm({ initial, isEdit, userId, onCancel, onSubm
       e.imageURL = "Enter a valid URL (must start with http/https)";
 
     const accountRegex = /^[0-9]{10,18}$/;
-if (!accountRegex.test(form.propertyAccountNumber)) {
-  e.propertyAccountNumber = "Account number must be 10 to 18 digits";
-}
+    if (!accountRegex.test(form.propertyAccountNumber)) {
+      e.propertyAccountNumber = "Account number must be 10 to 18 digits";
+    }
 
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -128,6 +128,7 @@ if (!accountRegex.test(form.propertyAccountNumber)) {
       propertyStatus: form.propertyStatus,
       propertyAccountNumber: Number(form.propertyAccountNumber),
     };
+    console.log("Submitting property:", payload);
 
     onSubmit(payload);
   };
@@ -259,8 +260,8 @@ if (!accountRegex.test(form.propertyAccountNumber)) {
                 }
               />
               {errors.propertyAccountNumber && (
-  <div className="text-red-600 text-sm">{errors.propertyAccountNumber}</div>
-)}
+                <div className="text-red-600 text-sm">{errors.propertyAccountNumber}</div>
+              )}
             </div>
           </div>
 

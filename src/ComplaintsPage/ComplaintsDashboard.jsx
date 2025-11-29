@@ -13,23 +13,21 @@ import { useNavigate } from 'react-router-dom';
 export default function ComplaintsDashboard() {
   const navigate = useNavigate();
 
-  var role = '';
-  var isAdmin = '';
-  var loggedUserId = '';
+  const [role, setRole] = useState('');
+  const [loggedUserId, setLoggedUserId] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const sessionData = sessionStorage.getItem("currentUser");
-
     if (sessionData) {
       const currentUser = JSON.parse(sessionData);
-      console.log("currentUser: ", currentUser.role);
-      role = currentUser.role;
-      isAdmin = role === 'admin';
-      loggedUserId = Number(currentUser.userId)
+      setRole(currentUser.role);
+      setIsAdmin(currentUser.role === 'admin');
+      setLoggedUserId(Number(currentUser.userId));
     } else {
       navigate("/login");
     }
-  }, []);
+  }, [navigate]);
 
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,10 +57,12 @@ export default function ComplaintsDashboard() {
     let mounted = true;
 
     getAllComplaints(role, loggedUserId).then((res) => {
+      console.log("Fetched complaints in main page: ", res.complaints);
       if (!mounted) return;
-      setComplaints(res.complaints || []);
+      setComplaints(res.complaints);
       setLoading(false);
     });
+    
 
     return () => (mounted = false);
   }, [role, loggedUserId]);

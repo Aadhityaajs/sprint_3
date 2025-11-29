@@ -1,21 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-// import "./PropertyDetails.css";
-
-function daysBetween(d1, d2) {
-  const one = new Date(d1);
-  const two = new Date(d2);
-  return Math.round((two - one) / (1000 * 60 * 60 * 24));
-}
-
-function Snackbar({ show, message, type }) {
-  if (!show) return null;
-  return (
-    <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 text-white px-4 py-2 rounded shadow-lg z-50 ${type === "error" ? "bg-red-600" : "bg-green-600"}`}>
-      {message}
-    </div>
-  );
-}
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { daysBetween, isNotPastDate, isValidDateRange } from "../utils/dateHelpers";
+import { CONSTANTS } from "../constants";
 
 export default function PropertyDetails() {
   const locationHook = useLocation();
@@ -26,219 +14,367 @@ export default function PropertyDetails() {
 
   const [cleaning, setCleaning] = useState(false);
   const [extraKart, setExtraKart] = useState(false);
-  const [snack, setSnack] = useState({
-    show: false,
-    message: "",
-    type: "success"
-  });
+  const [isBooking, setIsBooking] = useState(false);
 
   if (!property) {
     return (
-      <div style={{ padding: "40px" }}>
-        <h2>No Property Selected</h2>
-        <button onClick={() => navigate("/search")} className="bg-transparent border-none text-lg cursor-pointer mb-4 text-blue-600">
-          ← Back to Search
-        </button>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
+        <div className="bg-white p-8 rounded-xl shadow-md max-w-md w-full text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">No Property Selected</h2>
+          <p className="text-gray-600 mb-6">Please select a property from the search page.</p>
+          <button
+            onClick={() => navigate("/search")}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            ← Back to Search
+          </button>
+        </div>
       </div>
     );
   }
 
-  const nights =
-    checkIn && checkOut ? Math.max(1, daysBetween(checkIn, checkOut)) : 0;
+  const nights = checkIn && checkOut ? Math.max(1, daysBetween(checkIn, checkOut)) : 0;
   const pricePerNight = property.price || 0;
-  const totalPrice = nights * pricePerNight + (cleaning ? 2000 : 0);
-
-  const showSnack = (message, type = "success") => {
-    setSnack({ show: true, message, type });
-    setTimeout(() => setSnack((s) => ({ ...s, show: false })), 2500);
-  };
+  const totalPrice = nights * pricePerNight + (cleaning ? CONSTANTS.CLEANING_FEE : 0);
 
   const handleBooking = async () => {
-    // ---------- FRONTEND VALIDATIONS (same as before) ----------
+    if (isBooking) return;
+
+    // Get user from session
+    const userSession = sessionStorage.getItem("currentUser");
+    if (!userSession) {
+      toast.error("Please login to book a property");
+      setTimeout(() => navigate("/login"), 1500);
+      return;
+    }
+
+    let userData;
+    try {
+      userData = JSON.parse(userSession);
+    } catch (err) {
+      toast.error("Session error. Please login again.");
+      sessionStorage.removeItem("currentUser");
+      setTimeout(() => navigate("/login"), 1500);
+      return;
+    }
+
+    // Validate dates
     if (!checkIn || !checkOut) {
-      showSnack(
-        "Please select check-in and check-out dates in search page.",
-        "error"
-      );
+      toast.error("Please select check-in and check-out dates from the search page.");
       return;
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    if (!isNotPastDate(checkIn)) {
+      toast.error("Check-in date cannot be in the past.");
+      return;
+    }
 
-    if (checkIn < todayStr) {
-      showSnack("Check-in cannot be in the past.", "error");
+    if (!isValidDateRange(checkIn, checkOut)) {
+      toast.error("Check-out must be after check-in.");
       return;
     }
-    if (checkOut <= checkIn) {
-      showSnack("Check-out must be after check-in.", "error");
-      return;
-    }
+
     if (daysBetween(checkIn, checkOut) < 1) {
-      showSnack("Check-out must be after check-in.", "error");
+      toast.error("Booking must be for at least 1 night.");
       return;
     }
 
-    // ------------- BUILD BOOKING OBJECT FOR BACKEND -------------
+    // Validate guests
+    if (!guests || guests < 1) {
+      toast.error("Number of guests must be at least 1.");
+      return;
+    }
+
+    if (guests > property.max_guests) {
+      toast.error(`Maximum ${property.max_guests} guests allowed for this property.`);
+      return;
+    }
+
+    // Build booking payload
     const bookingPayload = {
       bookingId: Date.now(),
       propertyId: property.propertyId || property.id,
-      userId: 999, // dummy client id (no auth implemented)
+      userId: userData.userId,
       hostId: property.hostUserId,
       checkInDate: checkIn,
       checkOutDate: checkOut,
-      numberOfGuest: guests || 1,
+      numberOfGuest: guests,
       bookingStatus: true,
       hasExtraCot: extraKart,
       hasDeepClean: cleaning,
-      pricePerNight,
-      totalPrice,
+      pricePerDay: pricePerNight,
+      totalPrice: totalPrice,
       createdAt: new Date().toISOString(),
-      isPaymentStatus: true
+      isPaymentStatus: true,
     };
 
+    setIsBooking(true);
+
     try {
-      const res = await fetch("http://localhost:8081/api/client/bookings", {
+      const res = await fetch(`${CONSTANTS.API_BASE_URL}/api/client/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bookingPayload)
+        body: JSON.stringify(bookingPayload),
       });
 
       if (!res.ok) {
-        // try to read error message from backend
         let msg = "Failed to save booking.";
         try {
           const data = await res.json();
-          if (data && data.message) msg = data.message;
-        } catch (e) { }
-        showSnack(msg, "error");
+          msg = data.message || msg;
+        } catch (parseErr) {
+          console.error("Could not parse error response:", parseErr);
+        }
+        toast.error(msg);
+        setIsBooking(false);
         return;
       }
 
-      showSnack("Booking saved successfully!", "success");
+      const responseData = await res.json();
+      toast.success("Booking confirmed successfully!");
+
+      setTimeout(() => {
+        navigate("/bookings");
+      }, 1500);
     } catch (err) {
-      console.error("Error saving booking:", err);
-      showSnack("Failed to save booking.", "error");
+      console.error("Booking error:", err);
+      toast.error("Network error. Please check your connection and try again.");
+      setIsBooking(false);
     }
   };
 
   return (
-    <div className="p-8 px-12">
-      <button className="bg-transparent border-none text-lg cursor-pointer mb-4 text-blue-600" onClick={() => navigate("/search")}>
-        ← Back to Search
-      </button>
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <ToastContainer position="top-right" autoClose={3000} />
 
-      <img src={property.image} alt="property" className="w-full h-[420px] object-cover rounded-xl mb-8" />
-
-      <div className="grid grid-cols-[2fr_1fr] gap-10">
-        {/* LEFT SIDE */}
-        <div className="flex flex-col gap-8">
-          <div className="bg-gray-50 p-5 rounded-lg">
-            <h2 className="text-2xl font-bold mb-2.5">{property.name}</h2>
-            <p className="text-gray-600">
-              {property.address || property.location}
-            </p>
-            <p className="text-gray-600">
-              Stay: {checkIn || "—"} → {checkOut || "—"} &nbsp; | Guests:{" "}
-              {guests || "-"}
-            </p>
-          </div>
-
-          <div className="bg-gray-50 p-5 rounded-lg">
-            <h2 className="text-2xl font-bold mb-2.5">Description</h2>
-            <p>{property.description}</p>
-          </div>
-
-          <div className="bg-gray-50 p-5 rounded-lg">
-            <h2 className="text-2xl font-bold mb-2.5">Property Details</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <strong>Rooms:</strong> {property.rooms}
-              </div>
-              <div>
-                <strong>Bathrooms:</strong> {property.bathrooms}
-              </div>
-              <div>
-                <strong>Max Guests:</strong> {property.max_guests}
-              </div>
-              <div>
-                <strong>Price Per Night:</strong> ₹{property.price}
-              </div>
-              <div>
-                <strong>Host User ID:</strong> {property.hostUserId}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 p-5 rounded-lg">
-            <h2 className="text-2xl font-bold mb-2.5">Address</h2>
-            <p>{property.address}</p>
-          </div>
-
-          <div className="bg-gray-50 p-5 rounded-lg">
-            <h2 className="text-2xl font-bold mb-2.5">Amenities</h2>
-            <div className="flex flex-wrap gap-2.5">
-              {(property.amenities || []).map((a, idx) => (
-                <span key={idx} className="bg-blue-50 px-3 py-1.5 rounded-full">
-                  {a}
-                </span>
-              ))}
-            </div>
-
-            <ul>
-              <li>WiFi: {property.hasWifi ? "Yes" : "No"}</li>
-              <li>Parking: {property.hasParking ? "Yes" : "No"}</li>
-              <li>Pool: {property.hasPool ? "Yes" : "No"}</li>
-              <li>AC: {property.hasAC ? "Yes" : "No"}</li>
-              <li>Heater: {property.hasHeater ? "Yes" : "No"}</li>
-              <li>Pet Friendly: {property.hasPetFriendly ? "Yes" : "No"}</li>
-            </ul>
-          </div>
-        </div>
-
-        {/* RIGHT SIDE */}
-        <div className="bg-white p-5 rounded-lg shadow-md h-fit">
-          <div className="bg-gray-100 p-4 rounded-lg mb-5">
-            <p>
-              <strong>Host Name:</strong> {property.hostName || "Host Name"}
-            </p>
-            <p>
-              <strong>Mobile:</strong>{" "}
-              {property.hostMobile || "+91 98765 43210"}
-            </p>
-          </div>
-
-          <div className="my-4">
-            <label>
-              <input
-                type="checkbox"
-                checked={cleaning}
-                onChange={(e) => setCleaning(e.target.checked)}
-              />{" "}
-              Add Cleaning Service (+₹2000)
-            </label>
-          </div>
-
-          <div className="my-4">
-            <label>
-              <input
-                type="checkbox"
-                checked={extraKart}
-                onChange={(e) => setExtraKart(e.target.checked)}
-              />{" "}
-              Add Extra Kart (free)
-            </label>
-          </div>
-
-          <h2>Total Price:</h2>
-          <div className="text-2xl text-blue-600 font-bold">₹{totalPrice}</div>
-
-          <button className="w-full bg-blue-600 border-none p-3.5 text-white text-lg rounded-lg cursor-pointer hover:bg-blue-700" onClick={handleBooking}>
-            Book Now
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <button
+            onClick={() => navigate("/search")}
+            className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+          >
+            ← Back to Search
           </button>
         </div>
       </div>
 
-      <Snackbar show={snack.show} message={snack.message} type={snack.type} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Property Details */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+              <img
+                src={property.image}
+                alt={property.name}
+                className="w-full h-96 object-cover"
+              />
+
+              <div className="p-6">
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">{property.name}</h1>
+                <p className="text-lg text-gray-600 mb-4 flex items-center gap-2">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                  {property.location}
+                </p>
+
+                <div className="flex gap-6 text-gray-700 mb-6">
+                  <div className="flex items-center gap-2">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                      />
+                    </svg>
+                    <span className="font-medium">{property.rooms} Rooms</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <span className="font-medium">{property.bathrooms} Bathrooms</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    <span className="font-medium">Max {property.max_guests} Guests</span>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 pt-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">Description</h2>
+                  <p className="text-gray-700 leading-relaxed">
+                    {property.description || "No description available."}
+                  </p>
+                </div>
+
+                {property.amenities && property.amenities.length > 0 && (
+                  <div className="border-t border-gray-200 pt-6 mt-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-4">Amenities</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {property.amenities.map((amenity) => (
+                        <div
+                          key={amenity}
+                          className="flex items-center gap-2 text-gray-700"
+                        >
+                          <svg
+                            className="w-5 h-5 text-green-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                          <span>{amenity}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Booking Card */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 sticky top-4">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Booking Details</h2>
+
+              <div className="space-y-4 mb-6">
+                <div className="flex justify-between text-gray-700">
+                  <span>Price per night:</span>
+                  <span className="font-bold">₹{pricePerNight}</span>
+                </div>
+
+                {checkIn && checkOut && (
+                  <>
+                    <div className="flex justify-between text-gray-700">
+                      <span>Check-in:</span>
+                      <span className="font-medium">{checkIn}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-700">
+                      <span>Check-out:</span>
+                      <span className="font-medium">{checkOut}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-700">
+                      <span>Nights:</span>
+                      <span className="font-medium">{nights}</span>
+                    </div>
+                  </>
+                )}
+
+                {guests && (
+                  <div className="flex justify-between text-gray-700">
+                    <span>Guests:</span>
+                    <span className="font-medium">{guests}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-200 pt-4 mb-4">
+                <h3 className="font-semibold text-gray-900 mb-3">Add-ons</h3>
+                <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={cleaning}
+                    onChange={(e) => setCleaning(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    disabled={isBooking}
+                  />
+                  <span className="text-gray-700">
+                    Deep Cleaning (+₹{CONSTANTS.CLEANING_FEE})
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={extraKart}
+                    onChange={(e) => setExtraKart(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    disabled={isBooking}
+                  />
+                  <span className="text-gray-700">Extra Cot</span>
+                </label>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4 mb-6">
+                <div className="flex justify-between text-xl font-bold text-gray-900">
+                  <span>Total:</span>
+                  <span>₹{totalPrice}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={handleBooking}
+                disabled={isBooking || !checkIn || !checkOut}
+                className={`w-full py-3 rounded-lg font-medium transition ${
+                  isBooking || !checkIn || !checkOut
+                    ? "bg-gray-400 cursor-not-allowed text-white"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                }`}
+              >
+                {isBooking ? "Booking..." : "Confirm Booking"}
+              </button>
+
+              {(!checkIn || !checkOut) && (
+                <p className="text-sm text-gray-600 mt-3 text-center">
+                  Please select dates from the search page
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

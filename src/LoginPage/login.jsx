@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { login } from "../Apis/UserApi";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { CONSTANTS } from "../constants";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -18,37 +18,59 @@ export default function LoginPage() {
     password: "",
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const update = (field, value) => {
     setForm({ ...form, [field]: value });
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: "" });
+    }
   };
 
   const validate = (field) => {
     let msg = "";
 
-    if (field === "username" && form.username.trim().length < 3)
-      msg = "Enter a valid username";
+    if (field === "username") {
+      if (!form.username.trim()) {
+        msg = "Username is required";
+      } else if (form.username.trim().length < CONSTANTS.MIN_USERNAME_LENGTH) {
+        msg = `Username must be at least ${CONSTANTS.MIN_USERNAME_LENGTH} characters`;
+      }
+    }
 
-    if (field === "password" && form.password.trim().length < 8)
-      msg = "Password must be at least 8 characters";
+    if (field === "password") {
+      if (!form.password.trim()) {
+        msg = "Password is required";
+      } else if (form.password.trim().length < CONSTANTS.MIN_PASSWORD_LENGTH) {
+        msg = `Password must be at least ${CONSTANTS.MIN_PASSWORD_LENGTH} characters`;
+      }
+    }
 
     setErrors((prev) => ({ ...prev, [field]: msg }));
+    return msg === "";
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    validate("username");
-    validate("password");
+    // Validate all fields
+    const usernameValid = validate("username");
+    const passwordValid = validate("password");
 
-    if (errors.username || errors.password) {
-      toast.error("Fix highlighted fields");
+    if (!usernameValid || !passwordValid) {
+      toast.error("Please fix the highlighted fields");
       return;
     }
 
+    if (isSubmitting) return;
+
     const data = {
-      username: form.username,
-      password: form.password,
+      username: form.username.trim(),
+      password: form.password.trim(),
     };
+
+    setIsSubmitting(true);
 
     try {
       const response = await login(data);
@@ -67,21 +89,26 @@ export default function LoginPage() {
           );
 
           setTimeout(() => {
-            if (response.data.user.role === "client") {
+            const role = response.data.user.role.toLowerCase();
+            if (role === "client") {
               navigate("/clientDashboard");
-            } else if (response.data.user.role === "host") {
+            } else if (role === "host") {
               navigate("/hostDashboard");
-            } else if (response.data.user.role === "admin") {
+            } else if (role === "admin") {
               navigate("/adminDashboard");
+            } else {
+              navigate("/");
             }
           }, 1200);
         } else {
           toast.error(response.data.message || "Login failed");
+          setIsSubmitting(false);
         }
       }
     } catch (err) {
-      const msg = err.response?.data?.message || "Something went wrong";
+      const msg = err.response?.data?.message || "Login failed. Please try again.";
       toast.error(msg);
+      setIsSubmitting(false);
     }
   };
 
@@ -93,48 +120,58 @@ export default function LoginPage() {
     }`;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-grey-100 bg-gradient-to-b from-blue-200 to-white">
-      <ToastContainer />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-200 to-white">
+      <ToastContainer position="top-right" autoClose={3000} />
 
-      <div className="bg-white p-8 rounded-lg shadow-2xl max-w-sm">
-        <h2 className="text-3xl front-bold mb-8 text-center">User Login</h2>
+      <div className="bg-white p-8 rounded-lg shadow-2xl max-w-sm w-full">
+        <h2 className="text-3xl font-bold mb-8 text-center text-gray-900">User Login</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            className={inputStyle(errors.username)}
-            type="text"
-            placeholder="Enter Username"
-            value={form.username}
-            onChange={(e) => update("username", e.target.value)}
-            onBlur={() => validate("username")}
-          />
-          {errors.username && (
-            <p className="text-red-500 text-sm">{errors.username}</p>
-          )}
+          <div>
+            <input
+              className={inputStyle(errors.username)}
+              type="text"
+              placeholder="Enter Username"
+              value={form.username}
+              onChange={(e) => update("username", e.target.value)}
+              onBlur={() => validate("username")}
+              disabled={isSubmitting}
+            />
+            {errors.username && (
+              <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+            )}
+          </div>
 
-          <input
-            className={inputStyle(errors.password)}
-            type="password"
-            placeholder="Enter Password"
-            value={form.password}
-            onChange={(e) => update("password", e.target.value)}
-            onBlur={() => validate("password")}
-          />
-          {errors.password && (
-            <p className="text-red-500 text-sm">{errors.password}</p>
-          )}
+          <div>
+            <input
+              className={inputStyle(errors.password)}
+              type="password"
+              placeholder="Enter Password"
+              value={form.password}
+              onChange={(e) => update("password", e.target.value)}
+              onBlur={() => validate("password")}
+              disabled={isSubmitting}
+            />
+            {errors.password && (
+              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+            )}
+          </div>
 
           <button
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200"
+            className={`w-full text-white py-3 px-4 rounded-lg transition duration-200 font-medium ${
+              isSubmitting
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
             type="submit"
+            disabled={isSubmitting}
           >
-            Login
+            {isSubmitting ? "Logging in..." : "Login"}
           </button>
 
-          {/* 🔹 FORGOT PASSWORD LINK ADDED HERE */}
           <p
-            className="text-blue-600 cursor-pointer hover:text-blue-800 text-center mt-2"
-            onClick={() => navigate("/forgot-password")}
+            className="text-blue-600 cursor-pointer hover:text-blue-800 text-center mt-4 text-sm"
+            onClick={() => !isSubmitting && navigate("/forgot-password")}
           >
             Forgot Password?
           </p>
@@ -143,7 +180,7 @@ export default function LoginPage() {
         <div className="mt-6 text-center text-sm">
           <span
             className="text-blue-600 cursor-pointer hover:text-blue-800 hover:underline font-medium"
-            onClick={() => navigate("/signup")}
+            onClick={() => !isSubmitting && navigate("/signup")}
           >
             Don't have an account? Sign Up
           </span>

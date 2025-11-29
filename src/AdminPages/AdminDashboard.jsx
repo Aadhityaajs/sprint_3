@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import PropertyCard from "./PropertyCard.jsx";
 import { useNavigate } from "react-router-dom";
-import { Users, Home, Calendar, MessageSquare, Search, Filter } from "lucide-react";
+import { Users, Home, Calendar, MessageSquare, Search, Filter, Bell } from "lucide-react";
 import {
   getAllUsers,
   getAllProperties,
@@ -101,7 +101,7 @@ function AdminDashboard() {
       const user = users.find(u => u.userId === userId);
       if (!user) return;
 
-      const newStatus = user.userStatus === "ACTIVE" ? "BLOCKED" : "ACTIVE";
+      const newStatus = user.userStatus === "Active" ? "Blocked" : "Active";
       await toggleUserBlock(userId);
 
       setUsers(prev =>
@@ -112,10 +112,10 @@ function AdminDashboard() {
 
       setStats(prev => ({
         ...prev,
-        activeUsers: newStatus === "ACTIVE"
+        activeUsers: newStatus === "Active"
           ? prev.activeUsers + 1
           : prev.activeUsers - 1,
-        blockedUsers: newStatus === "BLOCKED"
+        blockedUsers: newStatus === "Blocked"
           ? prev.blockedUsers + 1
           : prev.blockedUsers - 1
       }));
@@ -158,28 +158,30 @@ function AdminDashboard() {
         getAllBookings(signal)
       ]);
 
-      const usersData = usersRes.ok && usersRes.data ? usersRes.data : { data: [] };
-      const propertiesData = propertiesRes.ok && propertiesRes.data ? propertiesRes.data : { data: [] };
-      const bookingsData = bookingsRes.ok && bookingsRes.data ? bookingsRes.data : { data: [] };
+      const usersData = usersRes.success ? usersRes.data : { data: [] };
+      const propertiesData = propertiesRes.success ? propertiesRes.data : { data: [] };
+      const bookingsData = bookingsRes.success ? bookingsRes.data : { data: [] };
 
-      setUsers(usersData.data || []);
-      setProperties(propertiesData.data || []);
-      setBookings(bookingsData.data || []);
+      console.log("Booking Response:", bookingsRes.success && bookingsRes.data);
 
-      const activeUsers = (usersData.data || []).filter(u => u.userStatus === "ACTIVE").length;
-      const blockedUsers = (usersData.data || []).filter(u => u.userStatus === "BLOCKED").length;
-      const availablePropsCount = (propertiesData.data || []).filter(p => p.propertyStatus === "AVAILABLE").length;
-      const bookedPropsCount = (propertiesData.data || []).filter(p => p.propertyStatus === "BOOKED").length;
-      const totalPropsCount = (propertiesData.data || []).filter(p => p.propertyStatus !== "DELETED").length;
+      setUsers(usersData || []);
+      setProperties(propertiesData || []);
+      setBookings(bookingsData || []);
+
+      const activeUsers = (usersData || []).filter(u => u.userStatus === "Active").length;
+      const blockedUsers = (usersData || []).filter(u => u.userStatus === "Blocked").length;
+      const availablePropsCount = (propertiesData || []).filter(p => p.propertyStatus === "AVAILABLE").length;
+      const bookedPropsCount = (propertiesData || []).filter(p => p.propertyStatus === "BOOKED").length;
+      const totalPropsCount = (propertiesData || []).filter(p => p.propertyStatus !== "DELETED").length;
 
       setStats({
-        totalUsers: usersData.data ? usersData.data.length : 0,
+        totalUsers: usersData ? usersData.length : 0,
         activeUsers,
         blockedUsers,
         totalProperties: totalPropsCount,
         bookedProperties: bookedPropsCount,
         availableProperties: availablePropsCount,
-        totalBookings: bookingsRes.ok && bookingsData.data ? bookingsData.data.length : 0,
+        totalBookings: bookingsRes.status && bookingsData ? bookingsData.length : 0,
         totalComplaints: 0,
       });
     } catch (e) {
@@ -263,8 +265,8 @@ function AdminDashboard() {
                 <span className="text-xs text-gray-500">Admin Portal</span>
               </div>
             </div>
-            
-            <button 
+
+            <button
               className="px-6 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors font-medium"
               onClick={logout}
             >
@@ -288,28 +290,28 @@ function AdminDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard 
-            title="Total Users" 
+          <StatCard
+            title="Total Users"
             value={stats.totalUsers}
             subtitle={`${stats.activeUsers} Active • ${stats.blockedUsers} Blocked`}
             icon={<Users className="w-6 h-6" />}
             color="blue"
           />
-          <StatCard 
-            title="Properties" 
+          <StatCard
+            title="Properties"
             value={stats.totalProperties}
             subtitle={`${stats.availableProperties} Available • ${stats.bookedProperties} Booked`}
             icon={<Home className="w-6 h-6" />}
             color="orange"
           />
-          <StatCard 
-            title="Bookings" 
+          <StatCard
+            title="Bookings"
             value={stats.totalBookings}
             icon={<Calendar className="w-6 h-6" />}
             color="green"
           />
-          <StatCard 
-            title="Complaints" 
+          <StatCard
+            title="Complaints"
             value={stats.totalComplaints}
             icon={<MessageSquare className="w-6 h-6" />}
             color="purple"
@@ -338,9 +340,15 @@ function AdminDashboard() {
           />
           <TabButton
             active={activeTab === "complaints"}
-            onClick={() => setActiveTab("complaints")}
+            onClick={() => navigate("/complaints")}
             icon={<MessageSquare className="w-4 h-4" />}
             label="Complaints"
+          />
+          <TabButton
+            active={activeTab === "notifications"}
+            onClick={() => navigate("/notifications")}
+            icon={<Bell className="w-4 h-4" />}
+            label="Notifications"
           />
         </div>
 
@@ -359,7 +367,7 @@ function AdminDashboard() {
                 />
               </div>
             </div>
-            
+
             {(activeTab === "users" || activeTab === "properties") && (
               <div className="flex items-center gap-2">
                 <Filter className="w-5 h-5 text-gray-500" />
@@ -371,8 +379,8 @@ function AdminDashboard() {
                   <option value="ALL">All Status</option>
                   {activeTab === "users" && (
                     <>
-                      <option value="ACTIVE">Active</option>
-                      <option value="BLOCKED">Blocked</option>
+                      <option value="Active">Active</option>
+                      <option value="Blocked">Blocked</option>
                     </>
                   )}
                   {activeTab === "properties" && (
@@ -419,24 +427,22 @@ function AdminDashboard() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            u.userStatus === "ACTIVE" 
-                              ? "bg-green-100 text-green-700" 
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${u.userStatus === "Active"
+                              ? "bg-green-100 text-green-700"
                               : "bg-red-100 text-red-700"
-                          }`}>
+                            }`}>
                             {u.userStatus}
                           </span>
                         </td>
                         <td className="px-6 py-4">
                           <button
                             onClick={() => toggleBlock(u.userId)}
-                            className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
-                              u.userStatus === "ACTIVE"
+                            className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${u.userStatus === "Active"
                                 ? "bg-red-100 text-red-700 hover:bg-red-200"
                                 : "bg-green-100 text-green-700 hover:bg-green-200"
-                            }`}
+                              }`}
                           >
-                            {u.userStatus === "ACTIVE" ? "Block" : "Unblock"}
+                            {u.userStatus === "Active" ? "Block" : "Unblock"}
                           </button>
                         </td>
                       </tr>
@@ -459,9 +465,9 @@ function AdminDashboard() {
               {filteredProperties.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredProperties.map((p) => (
-                    <PropertyCard 
-                      key={p.propertyId} 
-                      property={p} 
+                    <PropertyCard
+                      key={p.propertyId}
+                      property={p}
                       onDelete={deleteProperty}
                     />
                   ))}
@@ -505,11 +511,10 @@ function AdminDashboard() {
                           <button
                             onClick={() => closeBooking(b.bookingId)}
                             disabled={!canCloseBooking(b.checkoutDate)}
-                            className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
-                              canCloseBooking(b.checkoutDate)
+                            className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${canCloseBooking(b.checkoutDate)
                                 ? "bg-red-100 text-red-700 hover:bg-red-200"
                                 : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                            }`}
+                              }`}
                           >
                             Close
                           </button>
@@ -525,13 +530,6 @@ function AdminDashboard() {
                   )}
                 </tbody>
               </table>
-            </div>
-          )}
-
-          {/* Complaints Tab */}
-          {activeTab === "complaints" && (
-            <div className="px-6 py-12 text-center text-gray-500">
-              No complaints yet
             </div>
           )}
         </div>
@@ -568,11 +566,10 @@ function TabButton({ active, onClick, icon, label }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-        active
+      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${active
           ? "bg-blue-600 text-white shadow-md"
           : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
-      }`}
+        }`}
     >
       {icon}
       <span>{label}</span>

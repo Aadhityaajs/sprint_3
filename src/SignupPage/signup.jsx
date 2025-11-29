@@ -1,36 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signup } from "../Apis/UserApi";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { REGEX, CONSTANTS, SECURITY_QUESTIONS, INDIAN_STATES, INDIAN_STATE_DISTRICTS } from "../constants";
 
-// Hardcoded Indian states + districts
-const INDIAN_DATA = {
-  "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Trichy", "Salem"],
-  Karnataka: ["Bengaluru", "Mysuru", "Mangalore", "Hubli"],
-  Kerala: ["Kochi", "Trivandrum", "Kozhikode"],
-  Maharashtra: ["Mumbai", "Pune", "Nagpur", "Nashik"],
-  Delhi: ["New Delhi", "Dwarka", "Saket"]
-};
-
-const SECURITY_QUESTIONS = [
-  "What is your mother's maiden name?",
-  "What was the name of your first pet?",
-  "What city were you born in?"
-];
-
-const STRONG_PASSWORD_REGEX =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-
-function cleanUsernameRaw(name) {
-  return name.replace(/\s+/g, "");
-}
-
-export default function Signup() {
+export default function SignUpPage() {
   const navigate = useNavigate();
-
-  const [states] = useState(Object.keys(INDIAN_DATA));
-  const [cities, setCities] = useState([]);
 
   const [form, setForm] = useState({
     username: "",
@@ -41,24 +17,26 @@ export default function Signup() {
     city: "",
     pincode: "",
     state: "",
-    country: "India",
     password: "",
     confirmPassword: "",
+    role: "client",
     securityQuestion: SECURITY_QUESTIONS[0],
     securityAnswer: "",
     termsAccepted: false,
-    role: "client" // <-- DEFAULT ROLE
   });
 
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cities, setCities] = useState([]);
 
-  const update = (field, value) =>
+  const cleanUsernameRaw = (name) => name.replace(/\s+/g, "");
+
+  const update = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-
-  const handleStateChange = (stateName) => {
-    update("state", stateName);
-    update("city", "");
-    setCities(INDIAN_DATA[stateName] || []);
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
   };
 
   const validate = (field) => {
@@ -66,114 +44,172 @@ export default function Signup() {
 
     if (field === "username") {
       const cleaned = cleanUsernameRaw(form.username);
-      if (!cleaned || cleaned.length < 3) msg = "Enter a valid username";
+      if (!cleaned) {
+        msg = "Username is required";
+      } else if (cleaned.length < CONSTANTS.MIN_USERNAME_LENGTH) {
+        msg = `Username must be at least ${CONSTANTS.MIN_USERNAME_LENGTH} characters`;
+      }
     }
 
-    if (field === "email" && form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      msg = "Invalid email";
+    if (field === "email" && !REGEX.EMAIL.test(form.email)) {
+      msg = "Invalid email address";
+    }
 
-    if (field === "phone" && form.phone.length !== 10)
-      msg = "Phone must be 10 digits";
+    if (field === "phone") {
+      if (!form.phone) {
+        msg = "Phone number is required";
+      } else if (form.phone.length !== CONSTANTS.PHONE_LENGTH) {
+        msg = `Phone must be ${CONSTANTS.PHONE_LENGTH} digits`;
+      }
+    }
 
-    if (["building", "street", "city", "state"].includes(field) && !form[field])
-      msg = "Required";
+    if (["building", "street"].includes(field) && !form[field].trim()) {
+      msg = "This field is required";
+    }
 
-    if (field === "pincode" && form.pincode.length !== 6) msg = "6 digits";
+    if (field === "city" && !form.city) {
+      msg = "City is required";
+    }
 
-    if (field === "password" && !STRONG_PASSWORD_REGEX.test(form.password))
-      msg = "Weak password";
+    if (field === "state" && !form.state) {
+      msg = "State is required";
+    }
 
-    if (field === "confirmPassword" && form.confirmPassword !== form.password)
-      msg = "Passwords do not match";
+    if (field === "pincode") {
+      if (!form.pincode) {
+        msg = "Pincode is required";
+      } else if (form.pincode.length !== CONSTANTS.PINCODE_LENGTH) {
+        msg = `Pincode must be ${CONSTANTS.PINCODE_LENGTH} digits`;
+      }
+    }
 
-    if (field === "securityAnswer" && !form.securityAnswer.trim())
-      msg = "Required";
+    if (field === "password") {
+      if (!form.password) {
+        msg = "Password is required";
+      } else if (!REGEX.STRONG_PASSWORD.test(form.password)) {
+        msg = "Password must be ≥8 chars & include uppercase, lowercase, number & special char";
+      }
+    }
 
-    if (field === "termsAccepted" && !form.termsAccepted)
-      msg = "Please accept Terms";
+    if (field === "confirmPassword") {
+      if (!form.confirmPassword) {
+        msg = "Please confirm your password";
+      } else if (form.confirmPassword !== form.password) {
+        msg = "Passwords do not match";
+      }
+    }
+
+    if (field === "securityAnswer" && !form.securityAnswer.trim()) {
+      msg = "Security answer is required";
+    }
+
+    if (field === "termsAccepted" && !form.termsAccepted) {
+      msg = "You must accept the Terms & Conditions";
+    }
 
     setErrors((p) => ({ ...p, [field]: msg }));
+    return msg === "";
   };
 
- const submit = async (e) => {
-  e.preventDefault();
+  const handleStateChange = (stateValue) => {
+    update("state", stateValue);
+    update("city", ""); // Clear city when state changes
 
-  const fields = [
-    "username",
-    "email",
-    "phone",
-    "building",
-    "street",
-    "city",
-    "pincode",
-    "state",
-    "password",
-    "confirmPassword",
-    "securityAnswer",
-    "termsAccepted"
-  ];
-
-  fields.forEach(validate);
-
-  // Check if there are any errors
-  const hasErrors = Object.values(errors).some((v) => v);
-  if (hasErrors) {
-    toast.error("Fix highlighted fields");
-    return;
-  }
-
-  try {
-    const payload = {
-      username: cleanUsernameRaw(form.username),
-      email: form.email,
-      phone: form.phone,
-      address: {
-        building: form.building,
-        street: form.street,
-        city: form.city,
-        pincode: form.pincode,
-        state: form.state,
-        country: "India"
-      },
-      password: form.password,
-      role: form.role, // client or host
-      securityQuestion: form.securityQuestion, // ADD THIS
-      securityAnswer: form.securityAnswer // ADD THIS
-    };
-
-    const res = await signup(payload);
-
-    if (res?.status === 200) {
-      toast.success("Account created successfully!");
-      setTimeout(() => navigate("/login"), 1200);
+    if (INDIAN_STATE_DISTRICTS[stateValue]) {
+      setCities(INDIAN_STATE_DISTRICTS[stateValue]);
     } else {
-      toast.error(res?.data?.message || "Signup failed");
+      setCities([]);
     }
-  } catch (err) {
-    console.error("Signup error:", err);
-    toast.error(err?.response?.data?.message || "Signup failed");
-  }
-};
+  };
 
-  const input = (err) =>
-    `w-full px-4 py-3 border rounded-lg text-sm focus:outline-none focus:ring-2 transition ${
-      err
-        ? "border-red-400 focus:ring-red-500"
-        : "border-gray-300 focus:ring-blue-500"
+
+
+  const submit = async (e) => {
+    e.preventDefault();
+
+    const fields = [
+      "username",
+      "email",
+      "phone",
+      "building",
+      "street",
+      "city",
+      "pincode",
+      "state",
+      "password",
+      "confirmPassword",
+      "securityAnswer",
+      "termsAccepted",
+    ];
+
+    // Validate all fields
+    const validationResults = fields.map(field => validate(field));
+    const allValid = validationResults.every(result => result);
+
+    if (!allValid) {
+      toast.error("Please fix all highlighted fields");
+      return;
+    }
+
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const payload = {
+        username: cleanUsernameRaw(form.username),
+        email: form.email.trim(),
+        phone: form.phone,
+        address: {
+          building: form.building.trim(),
+          street: form.street.trim(),
+          city: form.city.trim(),
+          pincode: form.pincode,
+          state: form.state,
+          country: "India",
+        },
+        password: form.password,
+        role: form.role,
+        securityQuestion: form.securityQuestion,
+        securityAnswer: form.securityAnswer.trim(),
+      };
+
+      const res = await signup(payload);
+
+      if (res?.status === 200 || res?.status === 201) {
+        toast.success("Account created successfully!");
+        setTimeout(() => navigate("/login"), 1500);
+      } else {
+        toast.error(res?.data?.message || "Signup failed");
+        setIsSubmitting(false);
+      }
+    } catch (err) {
+      console.error("Signup error:", err);
+      toast.error(err?.response?.data?.message || "Signup failed. Please try again.");
+      setIsSubmitting(false);
+    }
+  };
+
+  const inputStyle = (err) =>
+    `w-full px-4 py-3 border rounded-lg text-sm focus:outline-none focus:ring-2 transition ${err
+      ? "border-red-400 focus:ring-red-500"
+      : "border-gray-300 focus:ring-blue-500"
     }`;
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-50 p-4">
-      <ToastContainer />
+      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="bg-white p-10 rounded-xl shadow-xl w-full max-w-xl">
         <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">
           Create Account
         </h2>
 
-        {/* ---------- ROLE TOGGLE ---------- */}
+        {/* Role Toggle */}
         <div className="flex items-center justify-center mb-6">
-          <span className={`mr-3 font-semibold ${form.role === "client" ? "text-blue-600" : "text-gray-600"}`}>
+          <span
+            className={`mr-3 font-semibold ${form.role === "client" ? "text-blue-600" : "text-gray-600"
+              }`}
+          >
             Client
           </span>
 
@@ -185,195 +221,284 @@ export default function Signup() {
               onChange={() =>
                 update("role", form.role === "client" ? "host" : "client")
               }
+              disabled={isSubmitting}
             />
             <div className="w-14 h-7 bg-gray-300 rounded-full peer peer-checked:bg-blue-600 transition"></div>
             <div className="absolute left-1 top-1 w-5 h-5 bg-white rounded-full transition peer-checked:translate-x-7"></div>
           </label>
 
-          <span className={`ml-3 font-semibold ${form.role === "host" ? "text-blue-600" : "text-gray-600"}`}>
+          <span
+            className={`ml-3 font-semibold ${form.role === "host" ? "text-blue-600" : "text-gray-600"
+              }`}
+          >
             Host
           </span>
         </div>
 
-        {/* ---------- FORM START ---------- */}
         <form onSubmit={submit} className="space-y-4">
-          <input
-            className={input(errors.username)}
-            placeholder="Username"
-            value={form.username}
-            onChange={(e) => update("username", e.target.value)}
-            onBlur={() => validate("username")}
-          />
-          {errors.username && <p className="text-red-500 text-sm">{errors.username}</p>}
+          {/* Username */}
+          <div>
+            <input
+              className={inputStyle(errors.username)}
+              placeholder="Username"
+              value={form.username}
+              onChange={(e) => update("username", e.target.value)}
+              onBlur={() => validate("username")}
+              disabled={isSubmitting}
+            />
+            {errors.username && (
+              <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+            )}
+          </div>
 
-          <input
-            className={input(errors.email)}
-            placeholder="Email"
-            value={form.email}
-            onChange={(e) => update("email", e.target.value)}
-            onBlur={() => validate("email")}
-          />
-          {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+          {/* Email */}
+          <div>
+            <input
+              className={inputStyle(errors.email)}
+              placeholder="Email"
+              type="email"
+              value={form.email}
+              onChange={(e) => update("email", e.target.value)}
+              onBlur={() => validate("email")}
+              disabled={isSubmitting}
+            />
+            {errors.email && (
+              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+            )}
+          </div>
 
-          <input
-            className={input(errors.phone)}
-            placeholder="Phone Number"
-            maxLength={10}
-            value={form.phone}
-            onChange={(e) => update("phone", e.target.value.replace(/\D/g, ""))}
-            onBlur={() => validate("phone")}
-          />
-          {errors.phone && <p className="text-red-500 text-sm">{errors.phone}</p>}
+          {/* Phone */}
+          <div>
+            <input
+              className={inputStyle(errors.phone)}
+              placeholder="Phone Number"
+              maxLength={CONSTANTS.PHONE_LENGTH}
+              value={form.phone}
+              onChange={(e) =>
+                update("phone", e.target.value.replace(/\D/g, ""))
+              }
+              onBlur={() => validate("phone")}
+              disabled={isSubmitting}
+            />
+            {errors.phone && (
+              <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+            )}
+          </div>
 
           <h3 className="text-lg font-semibold text-gray-700 mt-4">Address</h3>
 
+          {/* Address - Building, Street, City */}
           <div className="grid grid-cols-3 gap-3">
-            <input
-              className={input(errors.building)}
-              placeholder="Building"
-              value={form.building}
-              onChange={(e) => update("building", e.target.value)}
-              onBlur={() => validate("building")}
-            />
+            <div>
+              <input
+                className={inputStyle(errors.building)}
+                placeholder="Building"
+                value={form.building}
+                onChange={(e) => update("building", e.target.value)}
+                onBlur={() => validate("building")}
+                disabled={isSubmitting}
+              />
+              {errors.building && (
+                <p className="text-red-500 text-xs mt-1">{errors.building}</p>
+              )}
+            </div>
 
-            <input
-              className={input(errors.street)}
-              placeholder="Street"
-              value={form.street}
-              onChange={(e) => update("street", e.target.value)}
-              onBlur={() => validate("street")}
-            />
+            <div>
+              <input
+                className={inputStyle(errors.street)}
+                placeholder="Street"
+                value={form.street}
+                onChange={(e) => update("street", e.target.value)}
+                onBlur={() => validate("street")}
+                disabled={isSubmitting}
+              />
+              {errors.street && (
+                <p className="text-red-500 text-xs mt-1">{errors.street}</p>
+              )}
+            </div>
 
-            <input
-              className={input(errors.city)}
-              placeholder="City"
-              value={form.city}
-              onChange={(e) => update("city", e.target.value)}
-              onBlur={() => validate("city")}
-            />
+            <div>
+              <select
+                className={inputStyle(errors.city)}
+                value={form.city}
+                onChange={(e) => update("city", e.target.value)}
+                onBlur={() => validate("city")}
+                disabled={isSubmitting || cities.length === 0}
+              >
+                <option value="">Select City</option>
+                {cities.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              {errors.city && (
+                <p className="text-red-500 text-xs mt-1">{errors.city}</p>
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <input
-              className={input(errors.pincode)}
-              placeholder="Pincode"
-              maxLength={6}
-              value={form.pincode}
-              onChange={(e) => update("pincode", e.target.value.replace(/\D/g, ""))}
-              onBlur={() => validate("pincode")}
-            />
+          {/* Pincode, State */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <input
+                className={inputStyle(errors.pincode)}
+                placeholder="Pincode"
+                maxLength={CONSTANTS.PINCODE_LENGTH}
+                value={form.pincode}
+                onChange={(e) =>
+                  update("pincode", e.target.value.replace(/\D/g, ""))
+                }
+                onBlur={() => validate("pincode")}
+                disabled={isSubmitting}
+              />
+              {errors.pincode && (
+                <p className="text-red-500 text-xs mt-1">{errors.pincode}</p>
+              )}
+            </div>
 
+            <div>
+              <select
+                className={inputStyle(errors.state)}
+                value={form.state}
+                onChange={(e) => handleStateChange(e.target.value)}
+                onBlur={() => validate("state")}
+                disabled={isSubmitting}
+              >
+                <option value="">Select State</option>
+                {INDIAN_STATES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              {errors.state && (
+                <p className="text-red-500 text-xs mt-1">{errors.state}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Password */}
+          <div>
+            <input
+              type="password"
+              className={inputStyle(errors.password)}
+              placeholder="Password"
+              value={form.password}
+              onChange={(e) => update("password", e.target.value)}
+              onBlur={() => validate("password")}
+              disabled={isSubmitting}
+            />
+            {errors.password && (
+              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+            )}
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <input
+              type="password"
+              className={inputStyle(errors.confirmPassword)}
+              placeholder="Confirm Password"
+              value={form.confirmPassword}
+              onChange={(e) => update("confirmPassword", e.target.value)}
+              onBlur={() => validate("confirmPassword")}
+              disabled={isSubmitting}
+            />
+            {errors.confirmPassword && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.confirmPassword}
+              </p>
+            )}
+          </div>
+
+          {/* Security Question */}
+          <div>
+            <label className="block font-medium text-gray-700 mb-2 text-sm">
+              Security Question
+            </label>
             <select
-              className={input(errors.state)}
-              value={form.state}
-              onChange={(e) => handleStateChange(e.target.value)}
-              onBlur={() => validate("state")}
+              className={inputStyle()}
+              value={form.securityQuestion}
+              onChange={(e) => update("securityQuestion", e.target.value)}
+              disabled={isSubmitting}
             >
-              <option value="">Select State</option>
-              {states.map((s) => (
-                <option key={s} value={s}>
-                  {s}
+              {SECURITY_QUESTIONS.map((q) => (
+                <option key={q} value={q}>
+                  {q}
                 </option>
               ))}
             </select>
-
-            <select
-              className={input()}
-              value={form.city}
-              onChange={(e) => update("city", e.target.value)}
-            >
-              <option value="">Select City</option>
-              {cities.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
           </div>
 
-          <input
-            type="password"
-            className={input(errors.password)}
-            placeholder="Password"
-            value={form.password}
-            onChange={(e) => update("password", e.target.value)}
-            onBlur={() => validate("password")}
-          />
-          {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
-
-          <input
-            type="password"
-            className={input(errors.confirmPassword)}
-            placeholder="Confirm Password"
-            value={form.confirmPassword}
-            onChange={(e) => update("confirmPassword", e.target.value)}
-            onBlur={() => validate("confirmPassword")}
-          />
-          {errors.confirmPassword && (
-            <p className="text-red-500 text-sm">{errors.confirmPassword}</p>
-          )}
-
-          <label className="block font-medium text-gray-700">Security Question</label>
-          <select
-            className={input()}
-            value={form.securityQuestion}
-            onChange={(e) => update("securityQuestion", e.target.value)}
-          >
-            {SECURITY_QUESTIONS.map((q) => (
-              <option key={q} value={q}>
-                {q}
-              </option>
-            ))}
-          </select>
-
-          <input
-            className={input(errors.securityAnswer)}
-            placeholder="Security Answer"
-            value={form.securityAnswer}
-            onChange={(e) => update("securityAnswer", e.target.value)}
-            onBlur={() => validate("securityAnswer")}
-          />
-          {errors.securityAnswer && (
-            <p className="text-red-500 text-sm">{errors.securityAnswer}</p>
-          )}
-
-          <div className="flex items-center gap-2 mt-2">
+          {/* Security Answer */}
+          <div>
             <input
-              type="checkbox"
-              checked={form.termsAccepted}
-              onChange={(e) => update("termsAccepted", e.target.checked)}
-              onBlur={() => validate("termsAccepted")}
+              className={inputStyle(errors.securityAnswer)}
+              placeholder="Security Answer"
+              value={form.securityAnswer}
+              onChange={(e) => update("securityAnswer", e.target.value)}
+              onBlur={() => validate("securityAnswer")}
+              disabled={isSubmitting}
             />
-            <span className="text-sm">
+            {errors.securityAnswer && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.securityAnswer}
+              </p>
+            )}
+          </div>
+
+          {/* Terms & Conditions */}
+          <div>
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="checkbox"
+                id="terms"
+                checked={form.termsAccepted}
+                onChange={(e) => update("termsAccepted", e.target.checked)}
+                onBlur={() => validate("termsAccepted")}
+                disabled={isSubmitting}
+                className="w-4 h-4"
+              />
+              <label htmlFor="terms" className="text-sm text-gray-700"></label>
               I accept{" "}
+
               <a
                 href="https://www.termsandconditionsgenerator.com"
                 target="_blank"
+                rel="noopener noreferrer"
                 className="text-blue-600 underline"
               >
                 Terms & Conditions
               </a>
-            </span>
+            </div>
+            {errors.termsAccepted && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.termsAccepted}
+              </p>
+            )}
           </div>
-          {errors.termsAccepted && (
-            <p className="text-red-500 text-sm">{errors.termsAccepted}</p>
-          )}
 
+          {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg mt-4 text-lg font-semibold hover:bg-blue-700 transition"
+            className={`w-full py-3 rounded-lg mt-4 text-lg font-semibold transition ${isSubmitting
+              ? "bg-gray-400 cursor-not-allowed text-white"
+              : "bg-blue-600 hover:bg-blue-700 text-white"
+              }`}
+            disabled={isSubmitting}
           >
-            Sign Up
+            {isSubmitting ? "Creating Account..." : "Sign Up"}
           </button>
 
           <p
-            className="text-center text-blue-600 mt-4 cursor-pointer hover:underline"
-            onClick={() => navigate("/login")}
+            className="text-center text-blue-600 mt-4 cursor-pointer hover:underline text-sm"
+            onClick={() => !isSubmitting && navigate("/login")}
           >
             Already have an account? Login
           </p>
         </form>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }

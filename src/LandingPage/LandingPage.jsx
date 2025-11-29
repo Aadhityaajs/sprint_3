@@ -244,6 +244,7 @@ export default function SpaceFinders() {
                                     <div className="pl-3">
                                         <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30"
                                             style={{ borderRadius: 10 }}
+                                            onClick={() => navigate('/search')}
                                         >
                                             <Search className="w-5 h-5" />
                                             <span>Search</span>
