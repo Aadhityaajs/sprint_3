@@ -12,6 +12,9 @@ import {
   deleteProperty,
   getRevenue,
 } from '../Apis/HostApi';
+import { MessageSquare, Bell } from "lucide-react";
+import SFlogo from "../SFlogo.png";
+
 
 import PropertyCard from "./PropertyCard";
 import PropertyModal from "./PropertyModal";
@@ -184,22 +187,14 @@ export default function HostDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">SF</span>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">SpaceFinders</h1>
-                <span className="text-xs text-gray-500">Host Portal</span>
-              </div>
+                <img src={SFlogo} alt="SF" className="w-13 h-13" />
+                <h1 className="text-2xl font-bold text-gray-900">SpaceFinders</h1>
+                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                  Host
+                </span>
             </div>
             
             <div className="flex gap-3">
-              <button 
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium"
-                onClick={() => navigate("/complaints")}
-              >
-                Support
-              </button>
               <button 
                 className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors font-medium"
                 onClick={() => navigate("/profile")}
@@ -224,9 +219,6 @@ export default function HostDashboard() {
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
             Host Dashboard
           </h2>
-          <p className="text-lg text-gray-600">
-            Manage your properties, bookings, and revenue
-          </p>
         </div>
 
         {/* Messages */}
@@ -273,7 +265,7 @@ export default function HostDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-3 mb-6 flex-wrap">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <TabButton
             active={activeTab === "properties"}
             onClick={() => setActiveTab("properties")}
@@ -297,6 +289,18 @@ export default function HostDashboard() {
             icon={<Calendar className="w-4 h-4" />}
             label={`Bookings (${bookings.length})`}
             badge={newBookings > 0 ? newBookings : null}
+          />
+          <TabButton
+            active={activeTab === "complaints"}
+            onClick={() => navigate("/complaints")}
+            icon={<MessageSquare className="w-4 h-4" />}
+            label="Complaints"
+          />
+          <TabButton
+            active={activeTab === "notifications"}
+            onClick={() => navigate("/notifications")}
+            icon={<Bell className="w-4 h-4" />}
+            label="Notifications"
           />
         </div>
 

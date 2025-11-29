@@ -11,6 +11,7 @@ import {
   deleteProperty as deletePropertyApi,
   closeBooking as closeBookingApi
 } from "../Apis/AdminApi";
+import SFlogo from "../SFlogo.png";
 
 function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("users");
@@ -257,13 +258,11 @@ function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">SF</span>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">SpaceFinders</h1>
-                <span className="text-xs text-gray-500">Admin Portal</span>
-              </div>
+              <img src={SFlogo} alt="SF" className="w-13 h-13" />
+              <h1 className="text-2xl font-bold text-gray-900">SpaceFinders</h1>
+              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                Admin
+              </span>
             </div>
 
             <button
@@ -283,9 +282,6 @@ function AdminDashboard() {
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
             Admin Dashboard
           </h2>
-          <p className="text-lg text-gray-600">
-            Complete system oversight and management
-          </p>
         </div>
 
         {/* Stats Grid */}
@@ -319,7 +315,7 @@ function AdminDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-3 mb-6 flex-wrap">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <TabButton
             active={activeTab === "users"}
             onClick={() => setActiveTab("users")}
@@ -339,13 +335,11 @@ function AdminDashboard() {
             label="Bookings"
           />
           <TabButton
-            active={activeTab === "complaints"}
             onClick={() => navigate("/complaints")}
             icon={<MessageSquare className="w-4 h-4" />}
             label="Complaints"
           />
           <TabButton
-            active={activeTab === "notifications"}
             onClick={() => navigate("/notifications")}
             icon={<Bell className="w-4 h-4" />}
             label="Notifications"

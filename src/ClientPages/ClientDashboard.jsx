@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Search, Calendar, MapPin, TrendingUp } from "lucide-react";
+import { Search, Calendar, MapPin, TrendingUp, BookOpen, MessageSquare, Bell } from "lucide-react";
 import { today, daysBetween, computeStatus } from "../utils/dateHelpers";
 import { CONSTANTS } from "../constants";
+import SFlogo from "../SFlogo.png";
 
 const BASE_URL = `${CONSTANTS.API_BASE_URL}/api/client/`;
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
 
+  // const [activeTab, setActiveTab] = useState("users");
   const [totalBookings, setTotalBookings] = useState(0);
   const [upcomingCount, setUpcomingCount] = useState(0);
   const [currentCount, setCurrentCount] = useState(0);
@@ -147,6 +149,7 @@ export default function ClientDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-3">
+              <img src={SFlogo} alt="SF" className="w-13 h-13" />
               <h1 className="text-2xl font-bold text-gray-900">SpaceFinders</h1>
               <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
                 Client
@@ -185,9 +188,6 @@ export default function ClientDashboard() {
             Welcome back,{" "}
             <span className="text-blue-600">{user?.username || "Guest"}</span>!
           </h2>
-          <p className="text-lg text-gray-600">
-            Manage your bookings and discover new places to stay
-          </p>
         </div>
 
         {/* Stats Grid */}
@@ -215,6 +215,33 @@ export default function ClientDashboard() {
             value={completedCount}
             icon={<TrendingUp className="w-6 h-6" />}
             color="gray"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <TabButton 
+            className = "bg-blue-600 text-white shadow-md"
+            onClick={() => navigate("/search")}
+            icon={<Search className="w-4 h-4" />}
+            label="Search"
+          />
+          <TabButton 
+            className = "bg-blue-600 text-white shadow-md"
+            onClick={() => navigate("/bookings")}
+            icon={<BookOpen className="w-4 h-4" />}
+            label="Bookings"
+          />
+          <TabButton 
+            className = "bg-blue-600 text-white shadow-md"
+            onClick={() => navigate("/complaints")}
+            icon={<MessageSquare className="w-4 h-4" />}
+            label="Complaints"
+          />
+          <TabButton 
+            className = "bg-blue-600 text-white shadow-md"
+            onClick={() => navigate("/notifications")}
+            icon={<Bell className="w-4 h-4" />}
+            label="Notifications"
           />
         </div>
 
@@ -329,6 +356,22 @@ function ActionCard({ title, description, icon, onClick, gradient }) {
       <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
       <p className="text-gray-600 text-sm">{description}</p>
     </div>
+  );
+}
+
+// Tab Button Component
+function TabButton({ active, onClick, icon, label }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${active
+          ? "bg-blue-600 text-white shadow-md"
+          : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+        }`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
   );
 }
 
