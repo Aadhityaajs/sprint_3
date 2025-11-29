@@ -63,7 +63,7 @@ function AdminDashboard() {
     const extras = [];
     if (booking.hasExtraCot) extras.push('Extra Cot');
     if (booking.hasDeepClean) extras.push('Deep Clean');
-    return extras.length > 0 ? extras.join(', ') : 'nil';
+    return extras.length > 0 ? extras.join(', ') : '-';
   };
 
   const canCloseBooking = (checkoutDate) => {
@@ -76,7 +76,8 @@ function AdminDashboard() {
     const booking = bookings.find(b => b.bookingId === bookingId);
     if (!booking) return;
 
-    if (!canCloseBooking(booking.checkoutDate)) {
+    const checkoutDate = booking.checkOutDate || booking.checkoutDate;
+    if (!canCloseBooking(checkoutDate)) {
       alert('Cannot close booking: Checkout date has not passed yet.');
       return;
     }
@@ -103,7 +104,8 @@ function AdminDashboard() {
       if (!user) return;
 
       const newStatus = user.userStatus === "Active" ? "Blocked" : "Active";
-      await toggleUserBlock(userId);
+      const shouldBlock = newStatus === "Blocked";
+      await toggleUserBlock(userId, shouldBlock);
 
       setUsers(prev =>
         prev.map(u =>
@@ -182,7 +184,7 @@ function AdminDashboard() {
         totalProperties: totalPropsCount,
         bookedProperties: bookedPropsCount,
         availableProperties: availablePropsCount,
-        totalBookings: bookingsRes.status && bookingsData ? bookingsData.length : 0,
+        totalBookings: bookingsData.length,
         totalComplaints: 0,
       });
     } catch (e) {
@@ -285,7 +287,7 @@ function AdminDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <StatCard
             title="Total Users"
             value={stats.totalUsers}
@@ -306,12 +308,12 @@ function AdminDashboard() {
             icon={<Calendar className="w-6 h-6" />}
             color="green"
           />
-          <StatCard
+          {/* <StatCard
             title="Complaints"
             value={stats.totalComplaints}
             icon={<MessageSquare className="w-6 h-6" />}
             color="purple"
-          />
+          /> */}
         </div>
 
         {/* Tabs */}
@@ -417,27 +419,29 @@ function AdminDashboard() {
                         <td className="px-6 py-4 text-sm text-gray-600">{u.userPhone}</td>
                         <td className="px-6 py-4">
                           <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
-                            {u.role}
+                            {u.userRole}
                           </span>
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${u.userStatus === "Active"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
                             }`}>
                             {u.userStatus}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <button
-                            onClick={() => toggleBlock(u.userId)}
-                            className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${u.userStatus === "Active"
+                          {u.userRole !== 'admin' && (
+                            <button
+                              onClick={() => toggleBlock(u.userId)}
+                              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${u.userStatus === "Active"
                                 ? "bg-red-100 text-red-700 hover:bg-red-200"
                                 : "bg-green-100 text-green-700 hover:bg-green-200"
-                              }`}
-                          >
-                            {u.userStatus === "Active" ? "Block" : "Unblock"}
-                          </button>
+                                }`}
+                            >
+                              {u.userStatus === "Active" ? "Block" : "Unblock"}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -494,20 +498,20 @@ function AdminDashboard() {
                     filteredBookings.map((b) => (
                       <tr key={b.bookingId} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          {generateBookingId(b.bookingId)}
+                          {b.bookingId}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">{getPropertyName(b.propertyId)}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{getGuestName(b.userId)}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{b.checkinDate}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{b.checkoutDate}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{b.checkInDate || b.checkinDate}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{b.checkOutDate || b.checkoutDate}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{getExtras(b)}</td>
                         <td className="px-6 py-4">
                           <button
                             onClick={() => closeBooking(b.bookingId)}
-                            disabled={!canCloseBooking(b.checkoutDate)}
-                            className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${canCloseBooking(b.checkoutDate)
-                                ? "bg-red-100 text-red-700 hover:bg-red-200"
-                                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            disabled={!canCloseBooking(b.checkOutDate || b.checkoutDate)}
+                            className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${canCloseBooking(b.checkOutDate || b.checkoutDate)
+                              ? "bg-red-100 text-red-700 hover:bg-red-200"
+                              : "bg-gray-100 text-gray-400 cursor-not-allowed"
                               }`}
                           >
                             Close
@@ -561,8 +565,8 @@ function TabButton({ active, onClick, icon, label }) {
     <button
       onClick={onClick}
       className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${active
-          ? "bg-blue-600 text-white shadow-md"
-          : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+        ? "bg-blue-600 text-white shadow-md"
+        : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
         }`}
     >
       {icon}
