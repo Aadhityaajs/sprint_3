@@ -25,7 +25,7 @@ export default function ComplaintsDashboard() {
       setIsAdmin(currentUser.role === 'admin');
       setLoggedUserId(Number(currentUser.userId));
     } else {
-      navigate("/login");
+      navigate("/");
     }
   }, [navigate]);
 
@@ -62,7 +62,7 @@ export default function ComplaintsDashboard() {
       setComplaints(res.complaints);
       setLoading(false);
     });
-    
+
 
     return () => (mounted = false);
   }, [role, loggedUserId]);
@@ -72,8 +72,8 @@ export default function ComplaintsDashboard() {
     if (isAdmin) {
       return {
         total: complaints.length,
-        active: complaints.filter((c) => c.status === 'active').length,
-        resolved: complaints.filter((c) => c.status === 'closed').length
+        active: complaints.filter((c) => c.status === 'Active').length,
+        resolved: complaints.filter((c) => c.status === 'Closed').length
       };
     }
 
@@ -83,8 +83,8 @@ export default function ComplaintsDashboard() {
 
     return {
       total: userRows.length,
-      active: userRows.filter((c) => c.status === 'active').length,
-      resolved: userRows.filter((c) => c.status === 'closed').length
+      active: userRows.filter((c) => c.status === 'Active').length,
+      resolved: userRows.filter((c) => c.status === 'Closed').length
     };
   }, [complaints, isAdmin, loggedUserId]);
 
@@ -113,17 +113,19 @@ export default function ComplaintsDashboard() {
       }
     }
 
+
     // Admin filters
     if (isAdmin) {
-      if (userType === 'client')
+      if (userType === 'CLIENT')
         rows = rows.filter(
-          (r) => (r.clientOrHost || '').toUpperCase() === 'client'
+          (r) => (r.clientOrHost || '').toUpperCase() === 'CLIENT'
         );
-      if (userType === 'host')
+      if (userType === 'HOST')
         rows = rows.filter(
-          (r) => (r.clientOrHost || '').toUpperCase() === 'host'
+          (r) => (r.clientOrHost || '').toUpperCase() === 'HOST'
         );
     }
+
 
     // Date filtering
     if (isAdmin && (dateRange.from || dateRange.to)) {

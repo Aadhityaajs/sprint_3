@@ -1,9 +1,39 @@
 // src/complaints/components/RaiseComplaintModal.jsx
-import React from 'react';
-import { HOST_COMPLAINT_DESCRIPTIONS, CLIENT_COMPLAINT_DESCRIPTIONS, SAMPLE_BOOKINGS, INITIAL_COMPLAINTS } from '../../data';
+import React, { useEffect, useState } from 'react';
+import { HOST_COMPLAINT_DESCRIPTIONS, CLIENT_COMPLAINT_DESCRIPTIONS } from '../../data';
+import { getEligibleBookings } from '../../Apis/complaintsApi';
 
 export default function RaiseComplaintModal({ form, setForm, errors, onSubmit, onClose, userRole }) {
-  const descriptions = userRole === 'CLIENT' ? CLIENT_COMPLAINT_DESCRIPTIONS : HOST_COMPLAINT_DESCRIPTIONS;
+  const descriptions = userRole === 'client' ? CLIENT_COMPLAINT_DESCRIPTIONS : HOST_COMPLAINT_DESCRIPTIONS;
+  const [bookingIds, setBookingIds] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch eligible bookings when modal opens
+    const fetchBookings = async () => {
+      console.log("=== FETCHING ELIGIBLE BOOKINGS ===");
+      const sessionData = sessionStorage.getItem("currentUser");
+
+      if (sessionData) {
+        const currentUser = JSON.parse(sessionData);
+        console.log("Calling API with role:", currentUser.role, "userId:", currentUser.userId);
+
+        const result = await getEligibleBookings(currentUser.role, currentUser.userId);
+        console.log("API result:", result);
+
+        if (result.success) {
+          setBookingIds(result.bookingIds || []);
+        } else {
+          console.error("API returned error:", result);
+        }
+      } else {
+        console.error("No session data found!");
+      }
+      setLoading(false);
+    };
+
+    fetchBookings();
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-black/35 flex items-center justify-center p-4 z-50" onClick={onClose}>
@@ -17,10 +47,11 @@ export default function RaiseComplaintModal({ form, setForm, errors, onSubmit, o
               className="w-full p-2 rounded-md border border-gray-400 bg-white text-gray-600 mt-1"
               value={form.bookingId}
               onChange={(e) => setForm({ ...form, bookingId: e.target.value })}
+              disabled={loading}
             >
-              <option value="">Select booking</option>
-              {SAMPLE_BOOKINGS.map((b) => (
-                <option key={b.id} value={b.id}>{b.label}</option>
+              <option value="">{loading ? 'Loading bookings...' : 'Select booking'}</option>
+              {bookingIds.map((id) => (
+                <option key={id} value={id}>Booking Id {id}</option>
               ))}
             </select>
             {errors.bookingId && <div className="text-red-600 text-xs mt-1.5">{errors.bookingId}</div>}

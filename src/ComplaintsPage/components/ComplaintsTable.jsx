@@ -23,7 +23,7 @@ export default function ComplaintsTable({ rows, onResolve, onDelete, isAdmin }) 
               <td className="p-2 border-b border-gray-100 text-left text-sm">{row.bookingId}</td>
               <td className="p-2 border-b border-gray-100 text-left text-sm">{row.createdOn}</td>
               <td className="p-2 border-b border-gray-100 text-left text-sm">{row.status}</td>
-              <td className="p-2 border-b border-gray-100 text-left text-sm">{row.resolutionOn === '-' ? '' : row.resolutionOn}</td>
+              <td className="p-2 border-b border-gray-100 text-left text-sm">{row.resolvedOn || ''}</td>
               <td className="p-2 border-b border-gray-100 text-left text-sm max-w-[360px] whitespace-nowrap overflow-hidden text-ellipsis">{row.description}</td>
               <td className="p-2 border-b border-gray-100 text-left text-sm">
                 {isAdmin ? (
@@ -31,8 +31,8 @@ export default function ComplaintsTable({ rows, onResolve, onDelete, isAdmin }) 
                     disabled={row.status !== 'Active'}
                     onClick={() => onResolve(row.id)}
                     className={`p-1.5 px-2.5 rounded-md text-sm cursor-pointer ${row.status === 'Active'
-                        ? 'bg-blue-600 text-white hover:bg-blue-700'
-                        : 'bg-transparent text-gray-500 border border-gray-200 cursor-not-allowed opacity-50'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-transparent text-gray-500 border border-gray-200 cursor-not-allowed opacity-50'
                       }`}
                   >
                     Resolve
