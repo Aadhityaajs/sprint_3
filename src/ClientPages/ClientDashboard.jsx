@@ -158,12 +158,6 @@ export default function ClientDashboard() {
 
             <div className="flex gap-3">
               <button
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium"
-                onClick={() => navigate("/complaints")}
-              >
-                Support
-              </button>
-              <button
                 className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors font-medium"
                 onClick={() => navigate("/profile")}
               >
@@ -246,7 +240,7 @@ export default function ClientDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <ActionCard
             title="Search Properties"
             description="Find your perfect space from thousands of listings"
@@ -268,7 +262,7 @@ export default function ClientDashboard() {
             onClick={() => navigate("/complaints")}
             gradient="from-green-500 to-green-600"
           />
-        </div>
+        </div> */}
 
         {/* Upcoming Bookings Section */}
         <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">

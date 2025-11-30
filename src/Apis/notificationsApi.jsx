@@ -1,9 +1,9 @@
-const BASE_URL = "http://localhost:8081/api/notifications";
+const BASE_URL = "http://localhost:8081/api/admin/notifications";
 
 function headers(role, userId) {
   return {
     "Content-Type": "application/json",
-    "x-user-role": role.toUpperCase(),
+    "x-user-role": role.toLowerCase(),
     "x-user-id": String(userId)
   };
 }
@@ -19,7 +19,8 @@ export async function getAllNotifications(role, userId) {
     });
     if (!res.ok) throw new Error("Failed to fetch");
     const data = await res.json();
-    return { notifications: data.notification || [] };
+    // Backend returns { success: true, data: [...] }
+    return { notifications: data.data || [] };
   } catch (err) {
     console.error(err);
     return { notifications: [] };
@@ -41,10 +42,9 @@ export async function createNotification(role, creatorId, body) {
       const payload = {
         userId: uid,
         notificationTitle: title,
-        message: message,
+        notificationMessage: message,  // Changed from 'message' to 'notificationMessage'
         notificationType: type,
-        target: target || 'Selected Users',
-        createdBy: `user-${creatorId}`
+        notificationTarget: target || 'Selected Users',  // Changed from 'target' to 'notificationTarget'
       };
 
       const res = await fetch(BASE_URL, {
@@ -55,7 +55,10 @@ export async function createNotification(role, creatorId, body) {
 
       if (res.ok) {
         const data = await res.json();
-        createdNotifications.push(data);
+        // Backend returns { success: true, data: newNotification }
+        if (data.data) {
+          createdNotifications.push(data.data);
+        }
       }
     } catch (err) {
       console.error("Failed to create notification for user", uid, err);

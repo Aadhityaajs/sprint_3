@@ -9,10 +9,13 @@ import ViewNotificationModal from './components/ViewNotificationModal';
 import { getAllNotifications, createNotification, markAsRead } from '../Apis/notificationsApi.jsx';
 import AdminHeader from './components/AdminHeader.jsx';
 
-export default function NotificationsDashboard(props) {
-    const { role = 'CLIENT', userId: propUserId = 1 } = props;
-    const isAdmin = role === 'ADMIN';
-    const loggedUserId = Number(propUserId);
+export default function NotificationsDashboard() {
+    // Get user from sessionStorage
+    const sessionUser = JSON.parse(sessionStorage.getItem("currentUser"));
+    const role = sessionUser ? sessionUser.role : 'client';
+    const loggedUserId = sessionUser ? Number(sessionUser.userId) : 1;
+
+    const isAdmin = role === 'admin';
 
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -115,7 +118,7 @@ export default function NotificationsDashboard(props) {
             const to = dateRange.to ? new Date(dateRange.to) : null;
 
             rows = rows.filter((r) => {
-                const d = new Date(r.createdon);
+                const d = new Date(r.notificationCreatedOn || r.createdon || r.createdOn);
                 if (from && d < from) return false;
                 if (to) {
                     const end = new Date(dateRange.to);
@@ -132,7 +135,7 @@ export default function NotificationsDashboard(props) {
             .map(([k]) => k);
 
         rows = rows.filter((r) =>
-            allowedStatuses.includes(r.isRead ? 'Read' : 'Unread')
+            allowedStatuses.includes((r.notificationIsRead || r.isRead) ? 'Read' : 'Unread')
         );
 
         // Type filtering
@@ -149,7 +152,7 @@ export default function NotificationsDashboard(props) {
     const handleView = async (notification) => {
         setViewNotification(notification);
 
-        if (!notification.isRead) {
+        if (!(notification.notificationIsRead || notification.isRead)) {
             try {
                 const res = await markAsRead(role, loggedUserId, notification.notificationId);
                 if (res.notification) {

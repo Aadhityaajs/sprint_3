@@ -30,13 +30,19 @@ export default function NotificationsTable({ rows, onView, isAdmin }) {
                                 <span className="px-3 py-1 rounded-md text-xs font-semibold capitalize bg-blue-50 text-blue-600">{row.notificationType}</span>
                             </td>
                             <td className="p-2 border-b border-gray-100 text-left text-sm">{row.notificationTitle}</td>
-                            <td className="p-2 border-b border-gray-100 text-left text-sm">{new Date(row.createdon).toLocaleDateString()}</td>
+                            <td className="p-2 border-b border-gray-100 text-left text-sm">
+                                {new Date(row.notificationCreatedOn || row.createdon || row.createdOn).toLocaleDateString()}
+                            </td>
                             <td className="p-2 border-b border-gray-100 text-left text-sm">
                                 <span className={`px-3 py-1 rounded-md text-xs font-semibold capitalize ${row.isRead ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'}`}>
                                     {row.isRead ? 'Read' : 'Unread'}
                                 </span>
                             </td>
-                            <td className="p-2 border-b border-gray-100 text-left text-sm">{row.readOn && row.readOn !== '-' ? new Date(row.readOn).toLocaleDateString() : '-'}</td>
+                            <td className="p-2 border-b border-gray-100 text-left text-sm">
+                                {(row.notificationReadOn || row.readOn) && (row.notificationReadOn || row.readOn) !== '-'
+                                    ? new Date(row.notificationReadOn || row.readOn).toLocaleDateString()
+                                    : '-'}
+                            </td>
                             <td className="p-2 border-b border-gray-100 text-left text-sm">
                                 <div className="flex gap-2">
                                     <button

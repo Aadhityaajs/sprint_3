@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, MapPin, Star, Shield, Award, Users, Globe, CheckCircle, TrendingUp, Menu, X, ArrowRight, Home, Building, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import SFlogo from '../SFlogo.png';
 
 
 
@@ -45,7 +46,7 @@ export default function SpaceFinders() {
 
     const stats = [
         { value: "1M+", label: "Active Listings" },
-        { value: "190+", label: "Countries" },
+        { value: "20+", label: "States" },
         { value: "50M+", label: "Guest Arrivals" },
         { value: "4.8", label: "Average Rating" }
     ];
@@ -129,9 +130,7 @@ export default function SpaceFinders() {
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex justify-between items-center h-20">
                             <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                                    <MapPin className="w-6 h-6 text-white" />
-                                </div>
+                                <img src={SFlogo} alt="Logo" className="w-13 h-13" />
                                 <span className="text-2xl font-bold text-gray-900">SpaceFinders</span>
                             </div>
 
@@ -183,7 +182,7 @@ export default function SpaceFinders() {
                                     </div>
                                     <div className="flex items-center">
                                         <Globe className="w-5 h-5 mr-2 text-blue-600" />
-                                        <span className="font-medium">190+ Countries</span>
+                                        <span className="font-medium">20+ States</span>
                                     </div>
                                 </div>
                             </div>

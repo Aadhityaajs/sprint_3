@@ -8,7 +8,6 @@ export default function Header() {
   const sessionUser = JSON.parse(sessionStorage.getItem("currentUser"));
   const role = sessionUser ? sessionUser.role : null;
   const handleGoBack = () => {
-    console.log("Role:", role);
     if (role === 'client') {
       navigate('/clientDashboard');
     } else if (role === 'host') {
