@@ -65,8 +65,8 @@ export default function NotificationsDashboard() {
         if (isAdmin) {
             return {
                 total: notifications.length,
-                active: notifications.filter((c) => !c.isRead).length,
-                resolved: notifications.filter((c) => c.isRead).length
+                active: notifications.filter((c) => !c.notificationIsRead).length,
+                resolved: notifications.filter((c) => c.notificationIsRead).length
             };
         }
 
@@ -76,8 +76,8 @@ export default function NotificationsDashboard() {
 
         return {
             total: userRows.length,
-            active: userRows.filter((c) => !c.isRead).length,
-            resolved: userRows.filter((c) => c.isRead).length
+            active: userRows.filter((c) => !c.notificationIsRead).length,
+            resolved: userRows.filter((c) => c.notificationIsRead).length
         };
     }, [notifications, isAdmin, loggedUserId]);
 
@@ -109,7 +109,7 @@ export default function NotificationsDashboard() {
 
         // Admin filters
         if (isAdmin && userType !== 'ALL') {
-            rows = rows.filter((r) => r.target === userType);
+            rows = rows.filter((r) => r.notificationTarget === userType);
         }
 
         // Date filtering
@@ -118,7 +118,7 @@ export default function NotificationsDashboard() {
             const to = dateRange.to ? new Date(dateRange.to) : null;
 
             rows = rows.filter((r) => {
-                const d = new Date(r.notificationCreatedOn || r.createdon || r.createdOn);
+                const d = new Date(r.notificationCreatedOn);
                 if (from && d < from) return false;
                 if (to) {
                     const end = new Date(dateRange.to);
@@ -135,7 +135,7 @@ export default function NotificationsDashboard() {
             .map(([k]) => k);
 
         rows = rows.filter((r) =>
-            allowedStatuses.includes((r.notificationIsRead || r.isRead) ? 'Read' : 'Unread')
+            allowedStatuses.includes(r.notificationIsRead ? 'Read' : 'Unread')
         );
 
         // Type filtering
@@ -152,7 +152,8 @@ export default function NotificationsDashboard() {
     const handleView = async (notification) => {
         setViewNotification(notification);
 
-        if (!(notification.notificationIsRead || notification.isRead)) {
+        // Only mark as read if NOT admin
+        if (!isAdmin && !notification.notificationIsRead) {
             try {
                 const res = await markAsRead(role, loggedUserId, notification.notificationId);
                 if (res.notification) {

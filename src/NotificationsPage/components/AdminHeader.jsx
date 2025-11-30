@@ -144,13 +144,25 @@ export default function AdminHeader({
                         className="primary"
                         onClick={onOpenModal}
                         style={{
-                            padding: "8px 16px",
-                            borderRadius: 6,
+                            padding: "10px 20px",
+                            borderRadius: 8,
                             border: "none",
-                            background: "var(--accent)",
+                            background: "#155dfc",
                             color: "white",
                             cursor: "pointer",
-                            fontWeight: "bold"
+                            fontWeight: "bold",
+                            fontSize: "14px",
+                            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                            transition: "all 0.3s ease",
+                            whiteSpace: "nowrap"
+                        }}
+                        onMouseEnter={(e) => {
+                            e.target.style.transform = "translateY(-2px)";
+                            e.target.style.boxShadow = "0 6px 12px rgba(0, 0, 0, 0.15)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.target.style.transform = "translateY(0)";
+                            e.target.style.boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1)";
                         }}
                     >
                         Create Notification

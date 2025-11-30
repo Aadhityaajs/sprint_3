@@ -15,28 +15,32 @@ export default function CreateNotificationModal({
     };
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content">
-                <h3>Create Notification</h3>
-                <form onSubmit={onSubmit}>
-                    <div className="form-group">
-                        <label>Title</label>
+
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all">
+                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                    <h3 className="text-lg font-semibold text-gray-800">Create Notification</h3>
+                </div>
+
+                <form onSubmit={onSubmit} className="p-6 space-y-4">
+                    <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700">Title</label>
                         <input
                             type="text"
                             name="title"
-                            className="form-control"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                             value={form.title || ''}
                             onChange={handleChange}
                             placeholder="Notification Title"
                         />
-                        {errors.title && <span className="error">{errors.title}</span>}
+                        {errors.title && <span className="text-red-500 text-xs mt-1">{errors.title}</span>}
                     </div>
 
-                    <div className="form-group">
-                        <label>Target</label>
+                    <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700">Target</label>
                         <select
                             name="target"
-                            className="form-control"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
                             value={form.target || 'All Users'}
                             onChange={handleChange}
                         >
@@ -48,12 +52,12 @@ export default function CreateNotificationModal({
                     </div>
 
                     {/* {form.target === 'Specific Users' && (
-                        <div className="form-group">
-                            <label>User IDs (comma separated)</label>
+                        <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-700">User IDs (comma separated)</label>
                             <input
                                 type="text"
                                 name="targetUsersInput"
-                                className="form-control"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                                 value={form.targetUsersInput || ''}
                                 onChange={handleChange}
                                 placeholder="e.g. 1, 2, 3"
@@ -61,11 +65,11 @@ export default function CreateNotificationModal({
                         </div>
                     )} */}
 
-                    <div className="form-group">
-                        <label>Type</label>
+                    <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700">Type</label>
                         <select
                             name="type"
-                            className="form-control"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
                             value={form.type}
                             onChange={handleChange}
                         >
@@ -77,25 +81,32 @@ export default function CreateNotificationModal({
                         </select>
                     </div>
 
-                    <div className="form-group">
-                        <label>Message</label>
+                    <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700">Message</label>
                         <textarea
                             name="message"
-                            className="form-control"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
                             rows={4}
                             value={form.message}
                             onChange={handleChange}
                             placeholder="Enter notification message..."
                         />
-                        {errors.message && <span className="error">{errors.message}</span>}
+                        {errors.message && <span className="text-red-500 text-xs mt-1">{errors.message}</span>}
                     </div>
 
-                    <div className="modal-actions">
-                        <button type="button" className="btn-secondary" onClick={onClose}>
+                    <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">
+                        <button
+                            type="button"
+                            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                            onClick={onClose}
+                        >
                             Cancel
                         </button>
-                        <button type="submit" className="btn-primary">
-                            Send
+                        <button
+                            type="submit"
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm cursor-pointer"
+                        >
+                            Send Notification
                         </button>
                     </div>
                 </form>
