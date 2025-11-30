@@ -8,6 +8,7 @@ import { REGEX, CONSTANTS } from "../constants";
 export default function ProfilePage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [editField, setEditField] = useState(null);
   const [editData, setEditData] = useState({});
 
@@ -20,19 +21,50 @@ export default function ProfilePage() {
   const [cpErrors, setCpErrors] = useState({});
 
   useEffect(() => {
+    fetchUserData();
+  }, [navigate]);
+
+  const fetchUserData = async () => {
     const data = sessionStorage.getItem("currentUser");
     if (!data) {
       navigate("/login");
       return;
     }
+
     try {
-      setUser(JSON.parse(data));
+      const currentUser = JSON.parse(data);
+      console.log("Fetching user data for userId:", currentUser.userId);
+      
+      // Fetch latest user data from backend using userId
+      const res = await axios.post(
+        `${CONSTANTS.API_BASE_URL}/api/users/get-user`,
+        { userId: currentUser.userId }
+      );
+
+      console.log("Response from backend:", res.data);
+
+      if (res.data.success && res.data.user) {
+        setUser(res.data.user);
+        // Update sessionStorage with latest data
+        sessionStorage.setItem("currentUser", JSON.stringify(res.data.user));
+      }
     } catch (err) {
-      console.error("Error parsing user data:", err);
-      sessionStorage.removeItem("currentUser");
-      navigate("/login");
+      console.error("Error fetching user data:", err);
+      toast.error("Failed to load profile data");
+      
+      // Fallback to sessionStorage data if API fails
+      try {
+        const fallbackUser = JSON.parse(data);
+        setUser(fallbackUser);
+      } catch (parseErr) {
+        console.error("Error parsing user data:", parseErr);
+        sessionStorage.removeItem("currentUser");
+        navigate("/login");
+      }
+    } finally {
+      setLoading(false);
     }
-  }, [navigate]);
+  };
 
   const startEdit = (field) => {
     setEditField(field);
@@ -46,14 +78,17 @@ export default function ProfilePage() {
   const saveChanges = async () => {
     try {
       const res = await axios.put(
-        `${CONSTANTS.API_BASE_URL}/api/user/update`,
+        `${CONSTANTS.API_BASE_URL}/api/users/update`,
         editData
       );
 
-      if (res.status === 200) {
+      if (res.data.success) {
         toast.success("Profile updated successfully");
-        setUser(editData);
-        sessionStorage.setItem("currentUser", JSON.stringify(editData));
+        
+        // Update local state with response data
+        const updatedUser = res.data.user;
+        setUser(updatedUser);
+        sessionStorage.setItem("currentUser", JSON.stringify(updatedUser));
         setEditField(null);
       }
     } catch (err) {
@@ -72,7 +107,7 @@ export default function ProfilePage() {
     }
 
     try {
-      await axios.post(`${CONSTANTS.API_BASE_URL}/api/user/delete`, {
+      await axios.post(`${CONSTANTS.API_BASE_URL}/api/users/delete`, {
         username: user.username,
       });
       toast.success("Account deleted successfully");
@@ -130,7 +165,7 @@ export default function ProfilePage() {
     }
 
     try {
-      await axios.post(`${CONSTANTS.API_BASE_URL}/api/user/change-password`, {
+      await axios.post(`${CONSTANTS.API_BASE_URL}/api/users/change-password`, {
         username: user.username,
         oldPassword: oldPassword.trim(),
         newPassword: newPassword.trim(),
@@ -146,6 +181,18 @@ export default function ProfilePage() {
       toast.error(err.response?.data?.message || "Password change failed");
     }
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 text-lg">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) return null;
 
@@ -358,7 +405,6 @@ export default function ProfilePage() {
           >
             Logout
           </button>
-          
         </div>
       </div>
     </div>
