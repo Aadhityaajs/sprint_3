@@ -8,7 +8,7 @@ export default function SearchFilters({
   toggleStatus,
   typeFilters,
   toggleType,
-  userType, // for admin only
+  userType,
   setUserType,
   dateRange,
   setDateRange,
@@ -16,10 +16,10 @@ export default function SearchFilters({
   onOpenModal
 }) {
   return (
-    <div className="flex items-center gap-3 mt-6 max-w-[700px]">
-      <div className="search">
+    <div className="flex items-center gap-4 mt-6 w-full bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+      <div className="relative">
         <input
-          className="px-2.5 py-2 rounded-md border border-gray-500 bg-white text-gray-900 w-60"
+          className="pl-4 pr-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-900 w-64 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
           placeholder="Search notification by ID"
           value={searchId}
           onChange={(e) => setSearchId(e.target.value)}
@@ -27,82 +27,107 @@ export default function SearchFilters({
       </div>
 
       {isAdmin && (
-        <div className="flex gap-2 items-center mt-2">
-          <label>
-            From
+        <>
+          <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
             <input
               type="date"
-              className="ml-2.5 h-8 rounded-md border border-gray-500 bg-white text-gray-600 text-center"
+              className="bg-transparent border-none text-sm text-gray-600 focus:ring-0 px-2 py-1 outline-none"
               value={dateRange.from}
               onChange={(e) => setDateRange((d) => ({ ...d, from: e.target.value }))}
             />
-          </label>
-          <label>
-            To
+            <span className="text-gray-400 text-sm">to</span>
             <input
               type="date"
-              className="ml-2.5 h-8 rounded-md border border-gray-500 bg-white text-gray-600 text-center"
+              className="bg-transparent border-none text-sm text-gray-600 focus:ring-0 px-2 py-1 outline-none"
               value={dateRange.to}
               onChange={(e) => setDateRange((d) => ({ ...d, to: e.target.value }))}
             />
-          </label>
-        </div>
+          </div>
+        </>
       )}
 
-      <div className="flex gap-1.5 items-center flex-nowrap mt-2">
+      <div className="flex gap-2 items-center">
         {['Unread', 'Read'].map((k) => (
-          <label key={k} className={`inline-flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer mr-2 ${statusFilters[k] ? 'bg-blue-100' : ''}`}>
-            <input type="checkbox" checked={statusFilters[k]} onChange={() => toggleStatus(k)} />
+          <label 
+            key={k} 
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer text-sm font-medium transition-all select-none
+              ${statusFilters[k]
+                ? "bg-blue-100 text-blue-800"
+                : "bg-gray-100 text-gray-700"
+              }`}
+          >
+            <input 
+              type="checkbox" 
+              checked={statusFilters[k]} 
+              onChange={() => toggleStatus(k)} 
+              className="w-4 h-4 rounded" 
+            />
             {k}
           </label>
         ))}
       </div>
 
       {typeFilters && (
-        <div className="flex gap-1.5 items-center flex-nowrap mt-2">
-          <span className="mr-2 font-bold">Type:</span>
+        <div className="flex gap-2 items-center">
+          <span className="text-sm font-semibold text-gray-700 mr-1">Type:</span>
           {['info', 'warning', 'alert'].map((k) => (
-            <label key={k} className={`inline-flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer mr-2 ${typeFilters[k] ? 'bg-blue-100' : ''}`}>
-              <input type="checkbox" checked={typeFilters[k]} onChange={() => toggleType(k)} />
+            <label 
+              key={k} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer text-sm font-medium transition-all select-none capitalize
+                ${typeFilters[k]
+                  ? k === 'info' ? "bg-blue-100 text-blue-800"
+                    : k === 'warning' ? "bg-yellow-100 text-yellow-800"
+                      : "bg-red-100 text-red-800"
+                  : "bg-gray-100 text-gray-700"
+                }`}
+            >
+              <input 
+                type="checkbox" 
+                checked={typeFilters[k]} 
+                onChange={() => toggleType(k)} 
+                className="w-4 h-4 rounded" 
+              />
               {k}
             </label>
           ))}
         </div>
       )}
 
-      <div className="flex gap-2 ml-2 mt-2">
+      <div className="flex gap-2 ml-auto">
         {isAdmin ? (
           <>
-            <label className="inline-flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer mr-2">
+            <label className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer text-sm font-medium transition-all select-none
+              ${userType === 'ALL' ? 'bg-gray-800 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
               <input
                 type="radio"
                 name="userType"
                 checked={userType === 'ALL'}
                 onChange={() => setUserType('ALL')}
+                className="hidden"
               /> All
             </label>
-            <label className={`inline-flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer mr-2 ${userType === 'CLIENT' ? 'bg-blue-100' : ''}`}>
+            <label className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer text-sm font-medium transition-all select-none
+              ${userType === 'CLIENT' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
               <input
                 type="radio"
                 name="userType"
                 checked={userType === 'CLIENT'}
                 onChange={() => setUserType('CLIENT')}
+                className="hidden"
               /> Client
             </label>
-            <label className={`inline-flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer mr-2 ${userType === 'HOST' ? 'bg-blue-100' : ''}`}>
+            <label className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer text-sm font-medium transition-all select-none
+              ${userType === 'HOST' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
               <input
                 type="radio"
                 name="userType"
                 checked={userType === 'HOST'}
                 onChange={() => setUserType('HOST')}
+                className="hidden"
               /> Host
             </label>
           </>
-        ) : (
-          <div className="flex gap-2 items-center">
-            {/* Users cannot create notifications */}
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
