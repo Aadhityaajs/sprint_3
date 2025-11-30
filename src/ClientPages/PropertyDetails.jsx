@@ -105,42 +105,22 @@ export default function PropertyDetails() {
       pricePerDay: pricePerNight,
       totalPrice: totalPrice,
       createdAt: new Date().toISOString(),
-      isPaymentStatus: true,
+      isPaymentStatus: false, // Will be updated after payment
     };
 
-    setIsBooking(true);
-
-    try {
-      const res = await fetch(`${CONSTANTS.API_BASE_URL}/api/client/bookings`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bookingPayload),
+    // Store booking payload in sessionStorage
+    sessionStorage.setItem("pendingBooking", JSON.stringify(bookingPayload));
+    
+    // Navigate to payment page
+    toast.info("Redirecting to payment...");
+    setTimeout(() => {
+      navigate("/payment", { 
+        state: { 
+          amount: totalPrice,
+          propertyName: property.name 
+        } 
       });
-
-      if (!res.ok) {
-        let msg = "Failed to save booking.";
-        try {
-          const data = await res.json();
-          msg = data.message || msg;
-        } catch (parseErr) {
-          console.error("Could not parse error response:", parseErr);
-        }
-        toast.error(msg);
-        setIsBooking(false);
-        return;
-      }
-
-      const responseData = await res.json();
-      toast.success("Booking confirmed successfully!");
-
-      setTimeout(() => {
-        navigate("/bookings");
-      }, 1500);
-    } catch (err) {
-      console.error("Booking error:", err);
-      toast.error("Network error. Please check your connection and try again.");
-      setIsBooking(false);
-    }
+    }, 1000);
   };
 
   return (
@@ -363,7 +343,7 @@ export default function PropertyDetails() {
                     : "bg-blue-600 hover:bg-blue-700 text-white"
                 }`}
               >
-                {isBooking ? "Booking..." : "Confirm Booking"}
+                {isBooking ? "Processing..." : "Proceed to Payment"}
               </button>
 
               {(!checkIn || !checkOut) && (

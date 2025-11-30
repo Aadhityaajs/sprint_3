@@ -36,6 +36,7 @@ export default function App() {
         <Route path="/property" element={<PropertyDetails />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/booking-details" element={<BookingDetails />} />
+        <Route path="/payment" element={<PaymentPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Router>
