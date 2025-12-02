@@ -298,7 +298,7 @@ function AdminDashboard() {
           <StatCard
             title="Properties"
             value={stats.totalProperties}
-            subtitle={`${stats.availableProperties} Available • ${stats.bookedProperties} Booked`}
+           // subtitle={`${stats.availableProperties} Available • ${stats.bookedProperties} Booked`}
             icon={<Home className="w-6 h-6" />}
             color="orange"
           />
@@ -382,7 +382,7 @@ function AdminDashboard() {
                   {activeTab === "properties" && (
                     <>
                       <option value="AVAILABLE">Available</option>
-                      <option value="BOOKED">Booked</option>
+                      
                       <option value="DELETED">Deleted</option>
                     </>
                   )}
@@ -467,7 +467,10 @@ function AdminDashboard() {
                       key={p.propertyId}
                       property={p}
                       onDelete={deleteProperty}
+                      isDeleted={p.propertyStatus === 'DELETED'}
+                      canDelete={p.propertyStatus !== 'DELETED'}
                     />
+
                   ))}
                 </div>
               ) : (

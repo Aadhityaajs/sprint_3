@@ -14,10 +14,10 @@ export default function SearchFilters({
   onOpenModal
 }) {
   return (
-    <div className="flex items-center gap-3 mt-6 max-w-[700px]">
-      <div className="search">
+    <div className="flex items-center gap-4 w-full bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex-wrap">
+      <div className="relative">
         <input
-          className="px-2.5 py-2 rounded-md border border-gray-500 bg-white text-gray-900 w-60"
+          className="pl-4 pr-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-900 w-64 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
           placeholder="Search complaint by ID"
           value={searchId}
           onChange={(e) => setSearchId(e.target.value)}
@@ -25,68 +25,88 @@ export default function SearchFilters({
       </div>
 
       {isAdmin && (
-        <div className="flex gap-2 items-center mt-2">
-          <label>
-            From
+        <>
+          <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
             <input
               type="date"
-              className="ml-2.5 h-8 rounded-md border border-gray-500 bg-white text-gray-600 text-center"
+              className="bg-transparent border-none text-sm text-gray-600 focus:ring-0 px-2 py-1 outline-none"
               value={dateRange.from}
               onChange={(e) => setDateRange((d) => ({ ...d, from: e.target.value }))}
             />
-          </label>
-          <label>
-            To
+            <span className="text-gray-400 text-sm">to</span>
             <input
               type="date"
-              className="ml-2.5 h-8 rounded-md border border-gray-500 bg-white text-gray-600 text-center"
+              className="bg-transparent border-none text-sm text-gray-600 focus:ring-0 px-2 py-1 outline-none"
               value={dateRange.to}
               onChange={(e) => setDateRange((d) => ({ ...d, to: e.target.value }))}
             />
-          </label>
-        </div>
+          </div>
+        </>
       )}
 
-      <div className="flex gap-1.5 items-center flex-nowrap mt-2">
+      <div className="flex gap-2 items-center">
         {['Active', 'Closed', 'Deleted'].map((k) => (
-          <label key={k} className={`inline-flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer mr-2 ${statusFilters[k] ? 'bg-blue-100' : ''}`}>
-            <input type="checkbox" checked={statusFilters[k]} onChange={() => toggleStatus(k)} />
+          <label
+            key={k}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer text-sm font-medium transition-all select-none
+              ${statusFilters[k]
+                ? "bg-blue-100 text-blue-800"
+                : "bg-gray-100 text-gray-700"
+              }`}
+          >
+            <input
+              type="checkbox"
+              checked={statusFilters[k]}
+              onChange={() => toggleStatus(k)}
+              className="w-4 h-4 rounded"
+            />
             {k}
           </label>
         ))}
       </div>
 
-      <div className="flex gap-2 ml-2 mt-2">
+      <div className="flex gap-2 ml-auto">
         {isAdmin ? (
           <>
-            <label className="inline-flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer mr-2">
+            <label className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer text-sm font-medium transition-all select-none
+              ${userType === 'ALL' ? 'bg-gray-800 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
               <input
                 type="radio"
                 name="userType"
                 checked={userType === 'ALL'}
                 onChange={() => setUserType('ALL')}
+                className="hidden"
               /> All
             </label>
-            <label className={`inline-flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer mr-2 ${userType === 'CLIENT' ? 'bg-blue-100' : ''}`}>
+            <label className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer text-sm font-medium transition-all select-none
+              ${userType === 'CLIENT' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
               <input
                 type="radio"
                 name="userType"
                 checked={userType === 'CLIENT'}
                 onChange={() => setUserType('CLIENT')}
+                className="hidden"
               /> Client
             </label>
-            <label className={`inline-flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer mr-2 ${userType === 'HOST' ? 'bg-blue-100' : ''}`}>
+            <label className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer text-sm font-medium transition-all select-none
+              ${userType === 'HOST' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
               <input
                 type="radio"
                 name="userType"
                 checked={userType === 'HOST'}
                 onChange={() => setUserType('HOST')}
+                className="hidden"
               /> Host
             </label>
           </>
         ) : (
           <div className="flex gap-2 items-center">
-            <button className="bg-blue-600 text-white border-0 px-3.5 py-2 rounded cursor-pointer hover:bg-blue-700" onClick={onOpenModal}>Raise Complaint</button>
+            <button
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all"
+              onClick={onOpenModal}
+            >
+              Raise Complaint
+            </button>
           </div>
         )}
       </div>

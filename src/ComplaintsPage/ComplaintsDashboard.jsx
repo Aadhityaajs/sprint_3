@@ -228,27 +228,15 @@ export default function ComplaintsDashboard() {
 
 
   return (
-    <div className="p-5 max-w-full mx-auto">
-      <Header />
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Header />
 
-      <main className="bg-transparent">
-        <div className="flex gap-4 mb-4 items-start">
-          {isAdmin ? (
-            <AdminHeader
-              summary={summary}
-              searchId={searchId}
-              setSearchId={setSearchId}
-              statusFilters={statusFilters}
-              toggleStatus={toggleStatus}
-              userType={userType}
-              setUserType={setUserType}
-              dateRange={dateRange}
-              setDateRange={setDateRange}
-            />
-          ) : (
-            <>
-              <SummaryCards summary={summary} />
-              <SearchFilters
+        <main className="mt-6">
+          <div className="flex gap-5 mb-6 items-start flex-wrap">
+            {isAdmin ? (
+              <AdminHeader
+                summary={summary}
                 searchId={searchId}
                 setSearchId={setSearchId}
                 statusFilters={statusFilters}
@@ -257,35 +245,51 @@ export default function ComplaintsDashboard() {
                 setUserType={setUserType}
                 dateRange={dateRange}
                 setDateRange={setDateRange}
-                isAdmin={false}
-                onOpenModal={openModal}
               />
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <SummaryCards summary={summary} />
+                <SearchFilters
+                  searchId={searchId}
+                  setSearchId={setSearchId}
+                  statusFilters={statusFilters}
+                  toggleStatus={toggleStatus}
+                  userType={userType}
+                  setUserType={setUserType}
+                  dateRange={dateRange}
+                  setDateRange={setDateRange}
+                  isAdmin={false}
+                  onOpenModal={openModal}
+                />
+              </>
+            )}
+          </div>
 
-        {loading ? (
-          <div className="p-6">Loading complaints…</div>
-        ) : (
-          <ComplaintsTable
-            rows={filteredRows}
-            onResolve={handleResolve}
-            onDelete={handleDelete}
-            isAdmin={isAdmin}
+          {loading ? (
+            <div className="text-center py-12 text-gray-600 text-lg">
+              Loading complaints…
+            </div>
+          ) : (
+            <ComplaintsTable
+              rows={filteredRows}
+              onResolve={handleResolve}
+              onDelete={handleDelete}
+              isAdmin={isAdmin}
+            />
+          )}
+        </main>
+
+        {isModalOpen && (
+          <RaiseComplaintModal
+            form={form}
+            setForm={setForm}
+            errors={errors}
+            onSubmit={handleSubmit}
+            onClose={closeModal}
+            userRole={role === 'admin' ? 'client' : role}
           />
         )}
-      </main>
-
-      {isModalOpen && (
-        <RaiseComplaintModal
-          form={form}
-          setForm={setForm}
-          errors={errors}
-          onSubmit={handleSubmit}
-          onClose={closeModal}
-          userRole={role === 'admin' ? 'client' : role}
-        />
-      )}
+      </div>
     </div>
   );
 }

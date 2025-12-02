@@ -17,9 +17,15 @@ export default function Header() {
     }
   };
   return (
-    <header className="flex gap-3 items-center mb-5">
-      <button className="bg-blue-600 text-white border-0 p-2 rounded-md text-sm cursor-pointer w-[50px] flex justify-center items-center hover:bg-blue-700" aria-label="Back" onClick={handleGoBack}><MoveLeft /></button>
-      <h1 className="m-0 text-lg font-bold">Complaints Dashboard</h1>
+    <header className="flex gap-4 items-center mb-6">
+      <button
+        className="bg-blue-600 hover:bg-blue-700 text-white border-0 p-2.5 rounded-lg text-sm cursor-pointer w-12 h-8 flex justify-center items-center shadow-sm hover:shadow-md transition-all"
+        aria-label="Back"
+        onClick={handleGoBack}
+      >
+        <MoveLeft />
+      </button>
+      <h1 className="m-0 text-2xl font-bold text-gray-900">Complaints Dashboard</h1>
     </header>
   );
 }
