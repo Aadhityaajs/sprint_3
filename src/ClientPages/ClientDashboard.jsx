@@ -99,7 +99,9 @@ export default function ClientDashboard() {
             checkOut: co,
             guests: b.numberOfGuest,
             name: b.propertyName || property?.propertyName || "Unknown Property",
-            image: b.imageUrl || property?.imageUrl || "/no-image.jpg",
+            //image: b.imageUrl || property?.imageUrl || "/no-image.jpg",
+            image: property ? property.imageURL : "/no-image.jpg",
+
             location,
             pricePerDay,
             nights,
@@ -107,6 +109,12 @@ export default function ClientDashboard() {
             status: computeStatus(ci, co),
             hostName: host?.username || "Host",
             hostMobile: host?.phone || "",
+
+            rooms: property?.noOfRooms || "",
+bathrooms: property?.noOfBathrooms || "",
+max_guests: property?.maxNoOfGuests || "",
+address: property?.address || "",
+
           };
         })
         .filter(Boolean);

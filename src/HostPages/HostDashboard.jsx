@@ -1,7 +1,5 @@
-// src/HostPages/HostDashboard.jsx
 import React, { useEffect, useState, useRef } from "react";
-import { Home, Calendar, Trash2, Plus, DollarSign, TrendingUp, AlertCircle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Bell, Edit, MapPin, LogOut, Plus, Home, Calendar, Trash2, DollarSign, TrendingUp, AlertCircle, MessageSquare } from "lucide-react";
 import {
   getProperties,
   getDeletedProperties,
@@ -12,24 +10,23 @@ import {
   deleteProperty,
   getRevenue,
 } from '../Apis/HostApi';
-import { MessageSquare, Bell } from "lucide-react";
-import SFlogo from "../SFlogo.png";
-
 
 import PropertyCard from "./PropertyCard";
 import PropertyModal from "./PropertyModal";
 import PropertyForm from "./PropertyForm";
 import BookingCard from "./BookingCard";
 import BookingModal from "./BookingModal";
+import { useNavigate } from "react-router-dom";
 
 export default function HostDashboard() {
-  const navigate = useNavigate();
   const userRaw = sessionStorage.getItem("currentUser");
   let parsed = null;
   try { parsed = userRaw ? JSON.parse(userRaw) : null; } catch { parsed = null; }
   const userId = parsed?.userId ?? 1;
 
   const [activeTab, setActiveTab] = useState("properties");
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const [properties, setProperties] = useState([]);
   const [deletedProperties, setDeletedProperties] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -39,14 +36,53 @@ export default function HostDashboard() {
   const [formInitial, setFormInitial] = useState(null);
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState({ success: "", error: "" });
+
   const [bookingTab, setBookingTab] = useState("upcoming");
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [revenue, setRevenue] = useState(0);
+
+  const menuRef = useRef(null);
+  const menuButtonRef = useRef(null);
+  
+  const [flipRevenue, setFlipRevenue] = useState(false);
+  const revenueRef = useRef(null);
+
   const [newBookings, setNewBookings] = useState(0);
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (revenueRef.current && !revenueRef.current.contains(e.target)) {
+        setFlipRevenue(false);
+      }
+    }
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target) &&
+        menuButtonRef.current &&
+        !menuButtonRef.current.contains(event.target)
+      ) {
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     loadAll();
     loadTotalRevenue();
+    const handler = () => openAddPropertyForm();
+    window.addEventListener("openAddProperty", handler);
+    return () => window.removeEventListener("openAddProperty", handler);
   }, []);
 
   const loadAll = async () => {
@@ -62,13 +98,17 @@ export default function HostDashboard() {
       if (dResp?.success) setDeletedProperties(dResp.data || []);
 
       const bResp = await getBookings(userId);
+
       if (bResp?.success) {
         const list = bResp.data || [];
+
         const lastCount = Number(localStorage.getItem("lastBookingCount") || 0);
         const confirmed = list.filter(b => b.bookingStatus === true).length;
+
         if (confirmed > lastCount) {
           setNewBookings(confirmed - lastCount);
         }
+
         setBookings(list);
       }
 
@@ -113,115 +153,189 @@ export default function HostDashboard() {
   const submitProperty = async (payload) => {
     try {
       setLoading(true);
+
       const resp = isEditMode
         ? await updateProperty(payload)
         : await addProperty(payload);
 
-      console.log("Response from submitProperty:", resp);
-
-      if (resp?.success) {
-        setMessages({ success: isEditMode ? "Property updated" : "Property added", error: "" });
-        setShowPropertyForm(false);
-        loadAll();
+      if (!resp?.success) {
+        alert(resp.message || "Operation failed/already address exists");
+        setMessages({ success: "", error: resp?.message || "Operation failed" });
+        return;
       }
+
+      alert(isEditMode ? "Property updated successfully!" : "Property added successfully!");
+
+      setMessages({
+        success: isEditMode ? "Property updated" : "Property added",
+        error: ""
+      });
+
+      setShowPropertyForm(false);
+      await loadAll();
     } catch (err) {
-      setMessages({ success: "", error: err?.message || "Failed to save property" });
+      alert(err.message || "Something went wrong");
+      setMessages({ success: "", error: err?.message || "Operation failed" });
     } finally {
       setLoading(false);
+      setTimeout(() => setMessages({ success: "", error: "" }), 5000);
     }
   };
 
   const handleDelete = async (propertyId) => {
-    if (!window.confirm("Delete this property?")) return;
+    if (!window.confirm("Are you sure you want to delete this property?")) return;
     try {
       setLoading(true);
       const resp = await deleteProperty(propertyId);
+
       if (resp?.success) {
-        setMessages({ success: "Property deleted", error: "" });
-        loadAll();
+        setMessages({ success: "Property deleted (soft)", error: "" });
+        await loadAll();
       }
     } catch (err) {
-      setMessages({ success: "", error: err?.message || "Failed to delete" });
+      setMessages({ success: "", error: "Delete failed" });
     } finally {
       setLoading(false);
     }
   };
 
-  const openPropertyDetails = (propertyId) => {
-    const p = properties.find(x => x.propertyId === propertyId);
-    if (p) setSelectedProperty(p);
-  };
-
-  const propertyBlocked = (propertyId) => {
-    return bookings.some(b => b.propertyId === propertyId && b.bookingStatus);
+  const openPropertyDetails = async (propertyId) => {
+    try {
+      setLoading(true);
+      const resp = await getPropertyById(propertyId);
+      if (resp?.success) setSelectedProperty(resp.data);
+    } catch (err) {
+      setMessages({ success: "", error: "Failed to load property details" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const closeModal = () => setSelectedProperty(null);
 
-  const handleLogout = () => {
-    sessionStorage.clear();
-    navigate("/login");
+  const todayStr = () => new Date().toISOString().split("T")[0];
+  const isValidDate = (s) => {
+    const d = new Date(s);
+    return !isNaN(d) && /^\d{4}-\d{2}-\d{2}$/.test(s);
   };
 
-  const upcoming = bookings.filter(b => {
-    const checkIn = new Date(b.checkinDate);
-    return checkIn > new Date() && b.bookingStatus;
-  });
+  const now = new Date();
+  const today = now.toISOString().split("T")[0];
+  const currentHour = now.getHours();
+
+  const upcoming = bookings.filter(b =>
+    isValidDate(b.checkInDate) &&
+    b.bookingStatus === true &&
+    b.checkInDate > today
+  );
 
   const current = bookings.filter(b => {
-    const checkIn = new Date(b.checkinDate);
-    const checkOut = new Date(b.checkoutDate);
-    const now = new Date();
-    return now >= checkIn && now <= checkOut && b.bookingStatus;
+    if (!isValidDate(b.checkInDate) || !isValidDate(b.checkOutDate)) return false;
+    if (b.bookingStatus !== true) return false;
+
+    if (b.checkInDate <= today && b.checkOutDate > today) return true;
+
+    if (b.checkOutDate === today && currentHour < 12) return true;
+
+    return false;
   });
 
   const completed = bookings.filter(b => {
-    const checkOut = new Date(b.checkoutDate);
-    return checkOut < new Date() || !b.bookingStatus;
+    if (!isValidDate(b.checkOutDate)) return true;
+
+    if (b.bookingStatus !== true) return true;
+
+    if (b.checkOutDate < today) return true;
+
+    if (b.checkOutDate === today && currentHour >= 12) return true;
+
+    return false;
   });
+
+  const propertyBlocked = (propertyId) => {
+    const hasUpcoming = upcoming.some(b => b.propertyId === propertyId);
+    const hasCurrent = current.some(b => b.propertyId === propertyId);
+    return hasUpcoming || hasCurrent;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      {/* Header Navigation */}
+      
+      {/* NAV */}
       <nav className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-3">
-                <img src={SFlogo} alt="SF" className="w-13 h-13" />
-                <h1 className="text-2xl font-bold text-gray-900">SpaceFinders</h1>
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                  Host
-                </span>
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                <MapPin className="text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900">SpaceFinders</h1>
+              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                Host
+              </span>
             </div>
-            
-            <div className="flex gap-3">
-              <button 
-                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors font-medium"
-                onClick={() => navigate("/profile")}
+
+            <div className="flex items-center gap-3 relative">
+              <button
+                ref={menuButtonRef}
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-xl"
               >
-                My Profile
+                ☰
               </button>
-              <button 
-                className="px-6 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors font-medium"
-                onClick={handleLogout}
-              >
-                Logout
+
+              <button className="p-2 rounded-lg bg-white border hover:bg-gray-100 text-xl"
+              onClick={() => navigate("/profile")}>
+                👤
               </button>
+
+              {menuOpen && (
+                <div
+                  ref={menuRef}
+                  className="absolute right-0 top-14 w-44 bg-white rounded-lg shadow-lg border z-50"
+                >
+                  <button
+                    onClick={() => alert("Notifications coming soon")}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    <Bell size={16} /> Notifications
+                  </button>
+
+                  <button
+                    onClick={() => window.location.href = "/complaint"}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    <Edit size={16} /> Complaint
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      sessionStorage.clear();
+                      window.location.href = "/login";
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                  >
+                    <LogOut size={16} /> Logout
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Main Content */}
+      {/* MAIN CONTENT */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
+
+        {/* WELCOME SECTION */}
         <div className="mb-8">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
             Host Dashboard
           </h2>
+          <p className="text-gray-600">Manage your properties, bookings, and complaints</p>
         </div>
 
-        {/* Messages */}
+        {/* MESSAGES */}
         {messages.success && (
           <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
             {messages.success}
@@ -233,13 +347,17 @@ export default function HostDashboard() {
           </div>
         )}
 
-        {/* Stats Grid */}
+        {/* STATS GRID */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard 
             title="Total Revenue" 
             value={`₹${revenue.toFixed(2)}`}
             icon={<DollarSign className="w-6 h-6" />}
             color="green"
+            isFlippable={true}
+            flipRevenue={flipRevenue}
+            setFlipRevenue={setFlipRevenue}
+            revenueRef={revenueRef}
           />
           <StatCard 
             title="Properties" 
@@ -264,17 +382,17 @@ export default function HostDashboard() {
           />
         </div>
 
-        {/* Tabs */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        {/* TABS */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           <TabButton
             active={activeTab === "properties"}
-            onClick={() => setActiveTab("properties")}
+            onClick={() => { setActiveTab('properties'); loadAll(); }}
             icon={<Home className="w-4 h-4" />}
             label={`Properties (${properties.length})`}
           />
           <TabButton
             active={activeTab === "deleted"}
-            onClick={() => setActiveTab("deleted")}
+            onClick={() => { setActiveTab('deleted'); loadAll(); }}
             icon={<Trash2 className="w-4 h-4" />}
             label={`Deleted (${deletedProperties.length})`}
           />
@@ -285,29 +403,18 @@ export default function HostDashboard() {
               setNewBookings(0);
               const confirmed = bookings.filter(b => b.bookingStatus === true).length;
               localStorage.setItem("lastBookingCount", confirmed);
+              loadAll();
             }}
             icon={<Calendar className="w-4 h-4" />}
             label={`Bookings (${bookings.length})`}
             badge={newBookings > 0 ? newBookings : null}
           />
-          <TabButton
-            active={activeTab === "complaints"}
-            onClick={() => navigate("/complaints")}
-            icon={<MessageSquare className="w-4 h-4" />}
-            label="Complaints"
-          />
-          <TabButton
-            active={activeTab === "notifications"}
-            onClick={() => navigate("/notifications")}
-            icon={<Bell className="w-4 h-4" />}
-            label="Notifications"
-          />
         </div>
 
-        {/* Content Area */}
+        {/* CONTENT AREA */}
         <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-          {/* PROPERTIES TAB */}
-          {activeTab === "properties" && (
+          {/* PROPERTIES */}
+          {activeTab === 'properties' && (
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">My Properties</h3>
@@ -350,8 +457,8 @@ export default function HostDashboard() {
             </div>
           )}
 
-          {/* DELETED TAB */}
-          {activeTab === "deleted" && (
+          {/* DELETED */}
+          {activeTab === 'deleted' && (
             <div>
               <h3 className="text-2xl font-bold text-gray-900 mb-6">Deleted Properties</h3>
 
@@ -359,11 +466,7 @@ export default function HostDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {deletedProperties.map(p => (
                     <div key={p.propertyId} className="bg-gray-50 rounded-lg shadow overflow-hidden relative opacity-70">
-                      <img 
-                        src={p.imageURL || "/assets/placeholder-property.jpg"} 
-                        alt={p.propertyName} 
-                        className="w-full h-48 object-cover grayscale" 
-                      />
+                      <img src={p.imageURL || "/assets/placeholder-property.jpg"} alt={p.propertyName} className="w-full h-48 object-cover grayscale" />
                       <span className="absolute top-2 right-2 bg-red-600 text-white text-xs px-3 py-1 rounded-full font-semibold">
                         DELETED
                       </span>
@@ -384,8 +487,8 @@ export default function HostDashboard() {
             </div>
           )}
 
-          {/* BOOKINGS TAB */}
-          {activeTab === "bookings" && (
+          {/* BOOKINGS */}
+          {activeTab === 'bookings' && (
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">Bookings on My Properties</h3>
@@ -408,7 +511,7 @@ export default function HostDashboard() {
                     }`} 
                     onClick={() => setBookingTab('current')}
                   >
-                    Current ({current.length})
+                    Currently Staying ({current.length})
                   </button>
                   <button 
                     className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -418,28 +521,25 @@ export default function HostDashboard() {
                     }`} 
                     onClick={() => setBookingTab('completed')}
                   >
-                    Completed ({completed.length})
+                    Completed / Cancelled ({completed.length})
                   </button>
                 </div>
               </div>
 
               <div className="flex flex-col gap-4">
                 {bookingTab === 'upcoming' && (
-                  upcoming.length > 0 ? 
-                    upcoming.map(b => <BookingCard key={b.bookingId} booking={b} onOpen={() => setSelectedBooking(b)} />) :
-                    <EmptyState message="No upcoming bookings" />
+                  upcoming.length ? upcoming.map(b => <BookingCard key={b.bookingId} booking={b} onOpen={() => setSelectedBooking(b)} />)
+                  : <EmptyState message="No upcoming bookings" />
                 )}
 
                 {bookingTab === 'current' && (
-                  current.length > 0 ? 
-                    current.map(b => <BookingCard key={b.bookingId} booking={b} onOpen={() => setSelectedBooking(b)} />) :
-                    <EmptyState message="No current stays" />
+                  current.length ? current.map(b => <BookingCard key={b.bookingId} booking={b} onOpen={() => setSelectedBooking(b)} />)
+                  : <EmptyState message="No current stays" />
                 )}
 
                 {bookingTab === 'completed' && (
-                  completed.length > 0 ? 
-                    completed.map(b => <BookingCard key={b.bookingId} booking={b} onOpen={() => setSelectedBooking(b)} />) :
-                    <EmptyState message="No completed bookings" />
+                  completed.length ? completed.map(b => <BookingCard key={b.bookingId} booking={b} onOpen={() => setSelectedBooking(b)} />)
+                  : <EmptyState message="No completed bookings" />
                 )}
               </div>
             </div>
@@ -464,13 +564,48 @@ export default function HostDashboard() {
 }
 
 // Stat Card Component
-function StatCard({ title, value, subtitle, icon, color, badge }) {
+function StatCard({ title, value, subtitle, icon, color, badge, isFlippable, flipRevenue, setFlipRevenue, revenueRef }) {
   const colorClasses = {
     blue: "bg-blue-100 text-blue-600",
     green: "bg-green-100 text-green-600",
     purple: "bg-purple-100 text-purple-600",
     orange: "bg-orange-100 text-orange-600"
   };
+
+  if (isFlippable) {
+    return (
+      <div
+        ref={revenueRef}
+        onClick={() => setFlipRevenue(!flipRevenue)}
+        className="w-full h-full cursor-pointer"
+      >
+        <div
+          className={`relative w-full h-full duration-500 transform ${flipRevenue ? "rotate-y-180" : ""}`}
+          style={{ transformStyle: "preserve-3d" }}
+        >
+          <div
+            className="absolute inset-0 bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-center"
+            style={{ backfaceVisibility: "hidden" }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
+                {icon}
+              </div>
+            </div>
+            <h3 className="text-gray-600 text-sm font-medium mb-1">{title}</h3>
+            <p className="text-xl font-semibold text-blue-600">Tap to view</p>
+          </div>
+
+          <div
+            className="absolute inset-0 bg-blue-600 text-white p-6 rounded-xl shadow-lg flex flex-col items-center justify-center rotate-y-180"
+            style={{ backfaceVisibility: "hidden" }}
+          >
+            <p className="text-3xl font-bold mb-1">{value}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
