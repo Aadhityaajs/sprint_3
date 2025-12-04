@@ -1,5 +1,5 @@
 // src/complaints/components/SearchFilters.jsx
-import React from 'react';
+import React, { useMemo } from 'react';
 
 export default function SearchFilters({
   searchId,
@@ -13,6 +13,18 @@ export default function SearchFilters({
   isAdmin,
   onOpenModal
 }) {
+  // Validate date range
+  const dateError = useMemo(() => {
+    if (dateRange.from && dateRange.to) {
+      const fromDate = new Date(dateRange.from);
+      const toDate = new Date(dateRange.to);
+      if (toDate < fromDate) {
+        return '"To" date cannot be before "From" date';
+      }
+    }
+    return null;
+  }, [dateRange.from, dateRange.to]);
+
   return (
     <div className="flex items-center gap-4 w-full bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex-wrap">
       <div className="relative">
@@ -26,20 +38,27 @@ export default function SearchFilters({
 
       {isAdmin && (
         <>
-          <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
-            <input
-              type="date"
-              className="bg-transparent border-none text-sm text-gray-600 focus:ring-0 px-2 py-1 outline-none"
-              value={dateRange.from}
-              onChange={(e) => setDateRange((d) => ({ ...d, from: e.target.value }))}
-            />
-            <span className="text-gray-400 text-sm">to</span>
-            <input
-              type="date"
-              className="bg-transparent border-none text-sm text-gray-600 focus:ring-0 px-2 py-1 outline-none"
-              value={dateRange.to}
-              onChange={(e) => setDateRange((d) => ({ ...d, to: e.target.value }))}
-            />
+          <div className="relative">
+            <div className={`flex items-center gap-2 bg-gray-50 p-1 rounded-lg border ${dateError ? 'border-red-400' : 'border-gray-200'}`}>
+              <input
+                type="date"
+                className="bg-transparent border-none text-sm text-gray-600 focus:ring-0 px-2 py-1 outline-none"
+                value={dateRange.from}
+                onChange={(e) => setDateRange((d) => ({ ...d, from: e.target.value }))}
+              />
+              <span className="text-gray-400 text-sm">to</span>
+              <input
+                type="date"
+                className="bg-transparent border-none text-sm text-gray-600 focus:ring-0 px-2 py-1 outline-none"
+                value={dateRange.to}
+                onChange={(e) => setDateRange((d) => ({ ...d, to: e.target.value }))}
+              />
+            </div>
+            {dateError && (
+              <div className="absolute top-full left-0 mt-1 text-xs text-red-600 font-medium whitespace-nowrap">
+                {dateError}
+              </div>
+            )}
           </div>
         </>
       )}

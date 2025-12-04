@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import SummaryCards from "./SummaryCards";
 
 export default function AdminHeader({
@@ -12,6 +12,18 @@ export default function AdminHeader({
     dateRange,
     setDateRange,
 }) {
+    // Validate date range
+    const dateError = useMemo(() => {
+        if (dateRange.from && dateRange.to) {
+            const fromDate = new Date(dateRange.from);
+            const toDate = new Date(dateRange.to);
+            if (toDate < fromDate) {
+                return '"To" date cannot be before "From" date';
+            }
+        }
+        return null;
+    }, [dateRange.from, dateRange.to]);
+
     return (
         <div className="w-full">
             {/* ----------------- TOP ROW ----------------- */}
@@ -20,7 +32,7 @@ export default function AdminHeader({
                 <SummaryCards summary={summary} />
 
                 {/* Filters + Search + Dates */}
-                <div className="flex items-center gap-3 bg-white p-3 rounded-xl shadow-sm border border-gray-100 w-full flex-wrap">
+                <div className={`flex items-center gap-3 bg-white p-3 rounded-xl shadow-sm border border-gray-100 w-full min-h-16 flex-wrap ${dateError ? 'pb-8' : ''}`}>
 
                     {/* Search */}
                     <div className="relative">
@@ -45,20 +57,27 @@ export default function AdminHeader({
                     </select>
 
                     {/* Date Range */}
-                    <div className="flex items-center gap-1.5 bg-gray-50 p-1 rounded-lg border border-gray-200">
-                        <input
-                            type="date"
-                            value={dateRange.from}
-                            onChange={(e) => setDateRange((d) => ({ ...d, from: e.target.value }))}
-                            className="bg-transparent border-none text-xs text-gray-600 focus:ring-0 px-1.5 py-1 outline-none w-28"
-                        />
-                        <span className="text-gray-400 text-xs">to</span>
-                        <input
-                            type="date"
-                            value={dateRange.to}
-                            onChange={(e) => setDateRange((d) => ({ ...d, to: e.target.value }))}
-                            className="bg-transparent border-none text-xs text-gray-600 focus:ring-0 px-1.5 py-1 outline-none w-28"
-                        />
+                    <div className="relative">
+                        <div className={`flex items-center gap-1.5 bg-gray-50 p-1 rounded-lg border ${dateError ? 'border-red-400' : 'border-gray-200'}`}>
+                            <input
+                                type="date"
+                                value={dateRange.from}
+                                onChange={(e) => setDateRange((d) => ({ ...d, from: e.target.value }))}
+                                className="bg-transparent border-none text-xs text-gray-600 focus:ring-0 px-1.5 py-1 outline-none w-28"
+                            />
+                            <span className="text-gray-400 text-xs">to</span>
+                            <input
+                                type="date"
+                                value={dateRange.to}
+                                onChange={(e) => setDateRange((d) => ({ ...d, to: e.target.value }))}
+                                className="bg-transparent border-none text-xs text-gray-600 focus:ring-0 px-1.5 py-1 outline-none w-28"
+                            />
+                        </div>
+                        {dateError && (
+                            <div className="absolute top-full left-0 mt-1 text-xs text-red-600 font-medium whitespace-nowrap">
+                                {dateError}
+                            </div>
+                        )}
                     </div>
 
                     {/* Status Toggles */}
